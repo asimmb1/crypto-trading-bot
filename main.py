@@ -139,9 +139,15 @@ def main():
         print(f"\n🚀 Adaptive Bot  [ENV={Config.ENV.upper()}]")
         print("   Circuit breaker + dead man's switch armed.")
         print("   Run `python -m src.confirm` daily (or POST /confirm) to keep bots alive.\n")
-        # Start health server — provides GET /health and POST /confirm for Railway
+        # Start health server immediately so Railway health check passes
         from src.health_server import start_health_server
         start_health_server()
+        # Generate profitability matrix on first deploy if missing
+        matrix_file = "logs/profitability_matrix.json"
+        if not os.path.exists(matrix_file):
+            import subprocess
+            logger.info("Profitability matrix not found — running backtest (first deploy)...")
+            subprocess.run([sys.executable, "backtests/backtest_regime.py"], check=True)
         run_adaptive()
 
 
