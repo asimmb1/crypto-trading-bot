@@ -20,7 +20,7 @@ class Config:
 
     # Grid Bot
     GRID_PAIR = os.getenv("GRID_PAIR", "BTC/USDT")
-    GRID_LEVELS = int(os.getenv("GRID_LEVELS", 10))
+    GRID_LEVELS = int(float(os.getenv("GRID_LEVELS", 10)))
     GRID_SPACING_PCT = float(os.getenv("GRID_SPACING_PCT", 1.0))
     GRID_STOP_LOSS_PCT = float(os.getenv("GRID_STOP_LOSS_PCT", 8.0))
     _grid_capital_raw = os.getenv("GRID_TOTAL_CAPITAL", "")
@@ -28,7 +28,7 @@ class Config:
 
     # DCA Bot
     DCA_PAIR = os.getenv("DCA_PAIR", "ETH/USDT")
-    DCA_MAX_SAFETY_ORDERS = int(os.getenv("DCA_MAX_SAFETY_ORDERS", 5))
+    DCA_MAX_SAFETY_ORDERS = int(float(os.getenv("DCA_MAX_SAFETY_ORDERS", 5)))
     DCA_PRICE_DROP_PCT = float(os.getenv("DCA_PRICE_DROP_PCT", 2.5))
     DCA_TAKE_PROFIT_PCT = float(os.getenv("DCA_TAKE_PROFIT_PCT", 3.0))
     _base_raw   = os.getenv("DCA_BASE_ORDER",   "")
