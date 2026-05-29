@@ -1,0 +1,19 @@
+[Unit]
+Description=Crypto Grid Bot (BTC/USDT)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/crypto-bots/01-trading-bot
+Environment="PATH=/root/crypto-bots/01-trading-bot/venv/bin"
+EnvironmentFile=/root/crypto-bots/01-trading-bot/.env
+ExecStart=/root/crypto-bots/01-trading-bot/venv/bin/python src/grid_bot.py
+Restart=on-failure
+RestartSec=30s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
