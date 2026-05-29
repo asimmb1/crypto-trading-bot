@@ -48,9 +48,9 @@ def run_dca():
 def run_backtest():
     import subprocess
     print("\n[1/2] Fetching historical data...")
-    subprocess.run([sys.executable, "backtests/fetch_history.py"], check=True)
+    subprocess.run([sys.executable, "-m", "backtests.fetch_history"], check=True)
     print("\n[2/2] Running regime backtest...")
-    subprocess.run([sys.executable, "backtests/backtest_regime.py"], check=True)
+    subprocess.run([sys.executable, "-m", "backtests.backtest_regime"], check=True)
     print("\n✅ Backtest complete. Run `python main.py` to start adaptive trading.\n")
 
 
@@ -147,7 +147,7 @@ def main():
         if not os.path.exists(matrix_file):
             import subprocess
             logger.info("Profitability matrix not found — running backtest (first deploy)...")
-            subprocess.run([sys.executable, "backtests/backtest_regime.py"], check=True)
+            subprocess.run([sys.executable, "-m", "backtests.backtest_regime"], check=True)
         run_adaptive()
 
 
