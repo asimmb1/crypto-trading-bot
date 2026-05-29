@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "mkdir -p logs && python3 main.py"
+startCommand = "mkdir -p logs && ([ -f logs/profitability_matrix.json ] || python3 backtests/backtest_regime.py) && python3 main.py"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 healthcheckPath = "/health"
