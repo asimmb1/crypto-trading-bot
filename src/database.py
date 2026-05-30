@@ -65,6 +65,25 @@ def get_daily_summary(bot_type: str) -> dict:
     return {"count": row[0], "pnl": row[1]}
 
 
+def get_daily_summary_by_pair() -> list[dict]:
+    """Return trade count and total P&L per pair for today (UTC)."""
+    today = datetime.utcnow().date().isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.execute(
+        """
+        SELECT pair, COUNT(*), COALESCE(SUM(pnl), 0)
+        FROM trades
+        WHERE timestamp LIKE ?
+        GROUP BY pair
+        ORDER BY pair
+        """,
+        (f"{today}%",),
+    )
+    rows = [{"pair": r[0], "count": r[1], "pnl": r[2]} for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
 def get_all_trades(bot_type: str = None) -> list[dict]:
     """Fetch all trades, optionally filtered by bot type."""
     conn = sqlite3.connect(DB_PATH)
