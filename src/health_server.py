@@ -487,75 +487,127 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
   .trip-prices .tp-sell{color:var(--red);}
   .trip-meta{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
 
-  /* ── Grid Context Popup ── */
-  #grid-popup{
-    display:none;position:fixed;z-index:600;
-    background:#13172a;border:1px solid var(--border);border-radius:14px;
-    padding:16px;width:340px;max-width:calc(100vw - 24px);
-    max-height:90vh;overflow-y:auto;
-    box-shadow:0 16px 56px rgba(0,0,0,.8);
+  /* ── Grid Context Panel (slide-in from right) ── */
+  #grid-panel-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:699;
+    transition:opacity .28s;opacity:0;
   }
-  #grid-popup.open{display:block;}
-  .gp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;}
-  .gp-title{font-size:13px;font-weight:700;flex:1;}
-  .gp-header-btns{display:flex;gap:6px;align-items:center;}
+  #grid-panel-backdrop.open{display:block;opacity:1;}
+  #grid-panel{
+    position:fixed;top:0;right:0;height:100vh;
+    width:min(440px,100vw);
+    background:#13172a;border-left:1px solid var(--border);
+    transform:translateX(100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    overflow-y:auto;z-index:700;display:flex;flex-direction:column;
+  }
+  #grid-panel.open{transform:translateX(0);}
+
+  /* Panel header */
+  .gp-header{
+    position:sticky;top:0;background:#13172a;z-index:10;
+    display:flex;justify-content:space-between;align-items:flex-start;
+    padding:18px 20px 14px;border-bottom:1px solid var(--border);gap:12px;
+  }
+  .gp-header-left{flex:1;min-width:0;}
+  .gp-pair-name{font-size:16px;font-weight:700;margin-bottom:2px;}
+  .gp-subtitle{font-size:11px;color:var(--muted);}
+  .gp-header-btns{display:flex;gap:8px;align-items:center;flex-shrink:0;}
   .gp-demo-btn{
-    font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;
-    border:1px solid var(--blue);color:var(--blue);background:rgba(59,130,246,.1);
+    font-size:11px;padding:5px 10px;border-radius:5px;cursor:pointer;
+    border:1px solid var(--blue);color:var(--blue);background:rgba(59,130,246,.1);white-space:nowrap;
   }
   .gp-demo-btn:hover{background:rgba(59,130,246,.25);}
-  .gp-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;}
-  .gp-close:hover{color:var(--text);}
-  .gp-section-hdr{
-    font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
-    color:var(--muted);margin:10px 0 4px;
+  .gp-close{
+    background:none;border:1px solid var(--border);color:var(--muted);
+    cursor:pointer;font-size:16px;line-height:1;padding:5px 8px;border-radius:5px;
   }
-  .gp-empty{font-size:11px;color:var(--muted);padding:6px 0;}
-  /* Order rows */
+  .gp-close:hover{color:var(--text);border-color:var(--text);}
+
+  /* Demo banner */
+  .gp-demo-banner{
+    background:rgba(59,130,246,.1);border-bottom:1px solid rgba(59,130,246,.3);
+    padding:6px 20px;font-size:11px;color:var(--blue);text-align:center;
+  }
+
+  /* Panel body */
+  .gp-body{padding:16px 20px;flex:1;}
+  .gp-section-hdr{
+    font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--muted);margin:18px 0 8px;display:flex;align-items:center;gap:8px;
+  }
+  .gp-section-hdr:first-child{margin-top:0;}
+  .gp-empty{font-size:12px;color:var(--muted);padding:6px 0;font-style:italic;}
+
+  /* Order rows — same colour scheme as before */
   .gp-row{
-    display:flex;align-items:center;gap:8px;
-    padding:6px 8px;border-radius:6px;margin:2px 0;
+    display:flex;align-items:center;gap:10px;
+    padding:8px 10px;border-radius:7px;margin:3px 0;
     border-left:3px solid transparent;font-size:12px;
   }
   .gp-row-sell  {border-left-color:var(--red);   background:rgba(239,68,68,.07);}
   .gp-row-buy   {border-left-color:var(--green);  background:rgba(16,185,129,.07);}
   .gp-row-focus {border-left-color:var(--blue);   background:rgba(59,130,246,.14);border:1px solid rgba(59,130,246,.35);}
-  /* Fill rows */
   .gp-row-fill-buy  {border-left-color:var(--purple); background:rgba(139,92,246,.07);}
   .gp-row-fill-sell {border-left-color:var(--yellow);  background:rgba(245,158,11,.07);}
-  /* Market zone divider */
   .gp-zone-div{
     display:flex;align-items:center;gap:6px;margin:6px 0;
     font-size:10px;color:var(--muted);
   }
   .gp-zone-div::before,.gp-zone-div::after{content:'';flex:1;border-top:1px dashed rgba(255,255,255,.12);}
-  /* Row parts */
-  .gp-price{font-family:monospace;font-size:11px;width:78px;flex-shrink:0;color:var(--text);}
-  .gp-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0;}
+  .gp-price{font-family:monospace;font-size:12px;width:82px;flex-shrink:0;color:var(--text);}
+  .gp-icon{font-size:14px;width:16px;text-align:center;flex-shrink:0;}
   .gp-icon-sell  {color:var(--red);}
   .gp-icon-buy   {color:var(--green);}
   .gp-icon-focus {color:var(--blue);}
   .gp-icon-fbuy  {color:var(--purple);}
   .gp-icon-fsell {color:var(--yellow);}
-  .gp-label{font-size:11px;flex:1;}
+  .gp-label{font-size:12px;flex:1;}
   .gp-label-sell  {color:var(--red);}
   .gp-label-buy   {color:var(--green);}
   .gp-label-focus {color:var(--blue);font-weight:700;}
   .gp-label-fbuy  {color:var(--purple);}
   .gp-label-fsell {color:var(--yellow);}
-  .gp-time{font-size:10px;color:var(--muted);flex-shrink:0;}
+  .gp-time{font-size:11px;color:var(--muted);flex-shrink:0;}
+
+  /* Chain section */
+  .gp-streak-badge{
+    padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;
+    background:rgba(245,158,11,.15);color:var(--yellow);white-space:nowrap;
+    text-transform:none;letter-spacing:0;
+  }
+  .gp-chain-pair{
+    background:rgba(255,255,255,.02);border:1px solid var(--border);
+    border-radius:8px;padding:10px 12px;margin-bottom:8px;
+  }
+  .gp-chain-buy{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--green);padding:3px 0;}
+  .gp-chain-sell{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;}
+  .gp-chain-sell.tracked{color:var(--yellow);}
+  .gp-chain-sell.open{color:var(--red);}
+  .gp-chain-connector{
+    display:flex;align-items:center;gap:10px;
+    margin:2px 0 2px 6px;padding:3px 0 3px 14px;
+    border-left:2px solid rgba(255,255,255,.1);
+    font-size:11px;color:var(--muted);
+  }
+  .gp-chain-pnl-positive{color:var(--green);font-weight:700;}
+  .gp-chain-pending{
+    font-size:11px;color:var(--muted);font-style:italic;
+    padding:6px 0;border-top:1px dashed var(--border);margin-top:6px;
+  }
+  .gp-chain-break{
+    display:flex;align-items:center;gap:6px;margin:12px 0 8px;
+    font-size:10px;color:var(--muted);
+  }
+  .gp-chain-break::before,.gp-chain-break::after{content:'';flex:1;border-top:1px dashed rgba(255,255,255,.1);}
+
   /* Legend */
   .gp-legend{
-    display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:10px;
-    border-top:1px solid var(--border);font-size:10px;
+    padding:14px 20px 20px;border-top:1px solid var(--border);
+    display:flex;flex-wrap:wrap;gap:10px;font-size:11px;
+    position:sticky;bottom:0;background:#13172a;
   }
-  .gp-legend-item{display:flex;align-items:center;gap:4px;white-space:nowrap;}
-  /* Demo banner */
-  .gp-demo-banner{
-    background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);
-    border-radius:6px;padding:5px 10px;margin-bottom:10px;
-    font-size:10px;color:var(--blue);text-align:center;
-  }
+  .gp-legend-item{display:flex;align-items:center;gap:5px;white-space:nowrap;}
 
   /* ── Mobile responsive ── */
   @media (max-width: 640px) {
@@ -867,28 +919,39 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
   </div>
 </div>
 
-<!-- ── Grid Context Popup ─────────────────────────────────────────────── -->
-<div id="grid-popup">
+<!-- ── Grid Context Panel (slides in from right) ─────────────────────── -->
+<div id="grid-panel-backdrop" onclick="closeGridPanel()"></div>
+<div id="grid-panel">
   <div class="gp-header">
-    <span class="gp-title" id="gp-title">Grid Context</span>
+    <div class="gp-header-left">
+      <div class="gp-pair-name" id="gp-pair-name">SOL/USDT</div>
+      <div class="gp-subtitle" id="gp-subtitle">Grid Context &mdash; Current Session</div>
+    </div>
     <div class="gp-header-btns">
-      <button class="gp-demo-btn" onclick="showGridDemo()">&#x1F4CB; Demo</button>
-      <button class="gp-close" onclick="closeGridPopup()">&#x2715;</button>
+      <button class="gp-demo-btn" onclick="showGridDemo()">&#x1F4CB;&nbsp;Demo</button>
+      <button class="gp-close" onclick="closeGridPanel()">&#x2715;</button>
     </div>
   </div>
   <div id="gp-demo-banner" class="gp-demo-banner" style="display:none">
-    Demo mode — showing all possible states
+    Demo mode &mdash; showing all possible states with mock data
   </div>
-  <div class="gp-section-hdr">Open Orders</div>
-  <div id="gp-orders"></div>
-  <div class="gp-section-hdr" id="gp-fills-hdr" style="display:none">Recent Fills (this pair)</div>
-  <div id="gp-fills"></div>
+  <div class="gp-body">
+    <div class="gp-section-hdr">Open Orders</div>
+    <div id="gp-orders"></div>
+    <div class="gp-section-hdr" id="gp-fills-hdr" style="display:none">Recent Fills</div>
+    <div id="gp-fills"></div>
+    <div class="gp-section-hdr" id="gp-chain-hdr" style="display:none">
+      Grid Chain
+      <span class="gp-streak-badge" id="gp-streak-badge"></span>
+    </div>
+    <div id="gp-chain"></div>
+  </div>
   <div class="gp-legend">
-    <span class="gp-legend-item"><span class="gp-icon gp-icon-sell">●</span><span style="color:var(--red)">Open SELL</span></span>
-    <span class="gp-legend-item"><span class="gp-icon gp-icon-buy">●</span><span style="color:var(--green)">Open BUY</span></span>
-    <span class="gp-legend-item"><span class="gp-icon gp-icon-focus">▶</span><span style="color:var(--blue)">This order</span></span>
-    <span class="gp-legend-item"><span class="gp-icon gp-icon-fsell">★</span><span style="color:var(--yellow)">Sell filled</span></span>
-    <span class="gp-legend-item"><span class="gp-icon gp-icon-fbuy">✓</span><span style="color:var(--purple)">Buy filled</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-sell">&#x25CF;</span><span style="color:var(--red)">Open SELL</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-buy">&#x25CF;</span><span style="color:var(--green)">Open BUY</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-focus">&#x25B6;</span><span style="color:var(--blue)">This order</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-fsell">&#x2605;</span><span style="color:var(--yellow)">Sell filled</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-fbuy">&#x2713;</span><span style="color:var(--purple)">Buy filled</span></span>
   </div>
 </div>
 
@@ -1034,11 +1097,12 @@ function renderTripsModal() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// GRID CONTEXT POPUP — v2
-// Uses ACTUAL orders for the pair (not calculated levels) so colors are always
-// accurate. Shows fills for the same pair below the orders section.
+// GRID CONTEXT PANEL — slides in from the right, full viewport height.
+// Uses ACTUAL orders (no calculated levels), same colour scheme.
+// Adds a chain section showing the buy→sell sequence + streak for this session.
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ── Row builders (unchanged colour scheme) ────────────────────────────────
 function _gpOrderRow(price, side, isFocus) {
   const rowCls = isFocus ? 'gp-row gp-row-focus'
                : side === 'sell' ? 'gp-row gp-row-sell' : 'gp-row gp-row-buy';
@@ -1079,114 +1143,173 @@ function _gpFillRow(price, side, timestamp, pnl) {
   </div>`;
 }
 
-function _renderGridPopup(title, allOrders, pairFills, focusPrice, focusSide, isDemo) {
+// ── Chain builder ─────────────────────────────────────────────────────────
+function _buildChain(pairFills) {
+  // Sort fills chronologically (oldest first)
+  const sorted = [...pairFills].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+  // Match buys to sells in FIFO order — each buy pairs with the next sell
+  const pairs = [];
+  const pendingBuys = [];
+
+  for (const f of sorted) {
+    if (f.side === 'BUY') {
+      pendingBuys.push(f);
+    } else {
+      // SELL — pair with the oldest pending buy
+      const buy = pendingBuys.shift() || null;
+      pairs.push({ buy, sell: f });
+    }
+  }
+  // Remaining pending buys have no sell yet
+  for (const buy of pendingBuys) pairs.push({ buy, sell: null });
+
+  // Longest consecutive streak (pairs where both buy and sell have tracked pnl)
+  let maxStreak = 0, cur = 0;
+  for (const p of pairs) {
+    if (p.buy && p.sell && p.sell.pnl !== null) { cur++; maxStreak = Math.max(maxStreak, cur); }
+    else cur = 0;
+  }
+
+  const totalPnl = pairs.reduce((s, p) => s + (p.sell?.pnl || 0), 0);
+  return { pairs, streak: maxStreak, totalPnl };
+}
+
+// ── Chain HTML builder ────────────────────────────────────────────────────
+function _chainHtml(pairs) {
+  if (pairs.length === 0) return '<div class="gp-empty">No fills yet for this pair in the current session.</div>';
+
+  return [...pairs].reverse().map((p, i) => {  // newest first
+    const buyPriceFmt  = p.buy  ? '$' + parseFloat(p.buy.price).toFixed(4)  : '—';
+    const sellPriceFmt = p.sell ? '$' + parseFloat(p.sell.price).toFixed(4) : '—';
+    const buyTime  = p.buy?.timestamp?.split(' ')[1]?.slice(0,5)  || '';
+    const sellTime = p.sell?.timestamp?.split(' ')[1]?.slice(0,5) || '';
+    const hasPnl   = p.sell && p.sell.pnl !== null;
+    const pct      = hasPnl && p.buy
+      ? ((p.sell.pnl / (parseFloat(p.buy.price) * parseFloat(p.buy.amount || 1))) * 100).toFixed(2)
+      : null;
+
+    const connText = hasPnl
+      ? `<span class="gp-chain-pnl-positive">+$${p.sell.pnl.toFixed(4)}</span>${pct ? `&nbsp;(${pct}%)` : ''}`
+      : p.sell
+        ? `<span style="color:var(--red)">untracked P&amp;L</span>`
+        : `<span style="color:var(--muted);font-style:italic">sell not yet filled</span>`;
+
+    return `<div class="gp-chain-pair">
+      <div class="gp-chain-buy">
+        <span class="gp-icon gp-icon-buy">&#x25BC;</span>
+        <span class="gp-price">${buyPriceFmt}</span>
+        <span style="color:var(--green);font-size:11px">BUY</span>
+        <span class="gp-time" style="margin-left:auto">${buyTime}</span>
+      </div>
+      <div class="gp-chain-connector">${connText}</div>
+      <div class="gp-chain-sell ${hasPnl ? 'tracked' : p.sell ? 'open' : ''}">
+        <span class="gp-icon gp-icon-${hasPnl ? 'fsell' : 'sell'}">&#x25B2;</span>
+        <span class="gp-price">${sellPriceFmt}</span>
+        <span style="font-size:11px;color:${hasPnl ? 'var(--yellow)' : 'var(--muted)'}">SELL</span>
+        <span class="gp-time" style="margin-left:auto">${sellTime}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Main render function ──────────────────────────────────────────────────
+function _renderGridPanel(pair, allOrders, pairFills, focusPrice, focusSide, isDemo) {
   const fp = parseFloat(focusPrice);
 
-  // Split orders into sells (above) and buys (below), sorted by price
-  const sells = allOrders.filter(o => o.side === 'sell').sort((a,b) => b.price - a.price);
-  const buys  = allOrders.filter(o => o.side === 'buy').sort((a,b) => b.price - a.price);
-
-  // Render SELL orders (above market)
+  // Orders section
+  const sells = allOrders.filter(o => o.side === 'sell').sort((a, b) => b.price - a.price);
+  const buys  = allOrders.filter(o => o.side === 'buy').sort((a, b) => b.price - a.price);
   let ordersHtml = '';
   sells.forEach(o => {
-    const isFocus = parseFloat(o.price).toFixed(4) === fp.toFixed(4);
-    ordersHtml += _gpOrderRow(o.price, 'sell', isFocus);
+    ordersHtml += _gpOrderRow(o.price, 'sell', parseFloat(o.price).toFixed(4) === fp.toFixed(4));
   });
-
-  // Market zone divider (only when we have both sides)
-  if (sells.length > 0 && buys.length > 0) {
-    ordersHtml += `<div class="gp-zone-div">market&nbsp;zone</div>`;
-  } else if (sells.length > 0) {
-    ordersHtml += `<div class="gp-zone-div">&#x25BC;&nbsp;market&nbsp;below</div>`;
-  } else if (buys.length > 0) {
-    ordersHtml += `<div class="gp-zone-div">market&nbsp;above&nbsp;&#x25B2;</div>`;
-  }
-
-  // BUY orders (below market)
+  if (sells.length > 0 && buys.length > 0) ordersHtml += `<div class="gp-zone-div">market&nbsp;zone</div>`;
+  else if (sells.length > 0)               ordersHtml += `<div class="gp-zone-div">&#x25BC;&nbsp;market&nbsp;below</div>`;
+  else if (buys.length > 0)                ordersHtml += `<div class="gp-zone-div">market&nbsp;above&nbsp;&#x25B2;</div>`;
   buys.forEach(o => {
-    const isFocus = parseFloat(o.price).toFixed(4) === fp.toFixed(4);
-    ordersHtml += _gpOrderRow(o.price, 'buy', isFocus);
+    ordersHtml += _gpOrderRow(o.price, 'buy', parseFloat(o.price).toFixed(4) === fp.toFixed(4));
   });
-
-  // If the focus price isn't in either list (e.g. a fill with no active order)
-  const focusInOrders = allOrders.some(o => Math.abs(parseFloat(o.price) - fp) < fp * 0.001);
-  if (!focusInOrders) {
+  // If focus price not in any order (clicked a fill row with no active order)
+  if (!allOrders.some(o => parseFloat(o.price).toFixed(4) === fp.toFixed(4))) {
     ordersHtml = _gpOrderRow(fp, focusSide, true) + (ordersHtml ? '<div class="gp-zone-div"></div>' + ordersHtml : '');
   }
-
-  document.getElementById('gp-orders').innerHTML = ordersHtml || '<div class="gp-empty">No open orders for this pair</div>';
+  document.getElementById('gp-orders').innerHTML = ordersHtml || '<div class="gp-empty">No open orders for this pair.</div>';
 
   // Fills section
-  const fills = pairFills.slice(0, 4);
+  const recentFills = pairFills.slice(0, 6);
   const fillsHdr = document.getElementById('gp-fills-hdr');
   const fillsEl  = document.getElementById('gp-fills');
-  if (fills.length > 0) {
+  if (recentFills.length > 0) {
     fillsHdr.style.display = 'block';
-    fillsEl.innerHTML = fills.map(f => _gpFillRow(f.price, f.side, f.timestamp, f.pnl)).join('');
+    fillsEl.innerHTML = recentFills.map(f => _gpFillRow(f.price, f.side, f.timestamp, f.pnl)).join('');
   } else {
     fillsHdr.style.display = 'none';
     fillsEl.innerHTML = '';
   }
 
-  // Title and demo banner
-  document.getElementById('gp-title').textContent = title;
+  // Chain section
+  const chainHdr = document.getElementById('gp-chain-hdr');
+  const chainEl  = document.getElementById('gp-chain');
+  const { pairs, streak, totalPnl } = _buildChain(pairFills);
+  if (pairs.length > 0) {
+    chainHdr.style.display = 'flex';
+    const streakEl = document.getElementById('gp-streak-badge');
+    if (streak >= 1) {
+      const fire = streak >= 4 ? '&#x1F525;' : streak >= 2 ? '&#x2728;' : '&#x2713;';
+      streakEl.innerHTML = `${fire} ${streak} round trip${streak > 1 ? 's' : ''} &middot; +$${totalPnl.toFixed(4)}`;
+      streakEl.style.display = 'inline-block';
+    } else {
+      streakEl.style.display = 'none';
+    }
+    chainEl.innerHTML = _chainHtml(pairs);
+  } else {
+    chainHdr.style.display = 'none';
+    chainEl.innerHTML = '';
+  }
+
+  // Header
+  document.getElementById('gp-pair-name').textContent = pair + (isDemo ? '' : '');
+  document.getElementById('gp-subtitle').textContent  = isDemo
+    ? 'Demo — all possible states with mock data'
+    : 'Grid Context · Current Session';
   document.getElementById('gp-demo-banner').style.display = isDemo ? 'block' : 'none';
 }
 
-function openGridPopup(pair, focusPrice, focusSide, focusLabel, event) {
+// ── Open / close ──────────────────────────────────────────────────────────
+function openGridPanel(pair, focusPrice, focusSide, focusLabel, event) {
   event && event.stopPropagation();
   const pairOrders = _activeOrders.filter(o => o.pair === pair);
   const pairFills  = _recentFills.filter(f => f.pair === pair);
-  _renderGridPopup(pair + ' — Grid Context', pairOrders, pairFills, focusPrice, focusSide, false);
-  _positionGridPopup(event);
+  _renderGridPanel(pair, pairOrders, pairFills, focusPrice, focusSide, false);
+  document.getElementById('grid-panel').classList.add('open');
+  document.getElementById('grid-panel-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function showGridDemo() {
-  // Demo showing every possible state so users understand what each color means.
-  // Uses a realistic SOL-like scenario mid-session.
   const demoOrders = [
-    { side: 'sell', price: 84.85 },  // counter-sell placed after buy filled
-    { side: 'sell', price: 83.91 },  // counter-sell placed after buy filled
-    { side: 'sell', price: 83.00 },  // recovery sell (this is the focus)
-    { side: 'buy',  price: 81.00 },  // open buy — waiting to fill
-    { side: 'buy',  price: 80.19 },  // open buy — waiting to fill
-    { side: 'buy',  price: 79.39 },  // open buy — waiting to fill
+    { side: 'sell', price: 84.85 }, { side: 'sell', price: 83.91 },
+    { side: 'sell', price: 83.00 },
+    { side: 'buy',  price: 81.00 }, { side: 'buy',  price: 80.19 }, { side: 'buy', price: 79.39 },
   ];
   const demoFills = [
-    { side: 'BUY',  price: 84.00, timestamp: '2026-05-30 10:40', pnl: null },
-    { side: 'BUY',  price: 83.17, timestamp: '2026-05-30 10:39', pnl: null },
-    { side: 'SELL', price: 83.50, timestamp: '2026-05-30 10:38', pnl: 0.1012 },
-    { side: 'SELL', price: 83.25, timestamp: '2026-05-30 10:37', pnl: 0.5955 },
+    { side: 'BUY',  price: 84.00, timestamp: '2026-05-30 10:40:36', pnl: null,   amount: 0.119 },
+    { side: 'BUY',  price: 83.17, timestamp: '2026-05-30 10:39:21', pnl: null,   amount: 0.727 },
+    { side: 'SELL', price: 83.50, timestamp: '2026-05-30 10:38:31', pnl: 0.1012, amount: 0.119 },
+    { side: 'SELL', price: 83.25, timestamp: '2026-05-30 10:37:12', pnl: 0.5955, amount: 0.727 },
   ];
-  _renderGridPopup('SOL/USDT — Demo (all states)', demoOrders, demoFills, 83.00, 'sell', true);
-  _positionGridPopup(null);
+  _renderGridPanel('SOL/USDT', demoOrders, demoFills, 83.00, 'sell', true);
+  document.getElementById('grid-panel').classList.add('open');
+  document.getElementById('grid-panel-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
-function _positionGridPopup(event) {
-  const popup = document.getElementById('grid-popup');
-  popup.classList.add('open');
-  popup.style.transform = '';
-  if (event) {
-    const pw = 348, ph = 500;
-    const x = Math.min(event.clientX + 14, window.innerWidth  - pw - 8);
-    const y = Math.min(event.clientY - 10, window.innerHeight - ph - 8);
-    popup.style.left = Math.max(8, x) + 'px';
-    popup.style.top  = Math.max(8, y) + 'px';
-  } else {
-    popup.style.left = '50%';
-    popup.style.top  = '50%';
-    popup.style.transform = 'translate(-50%,-50%)';
-  }
+function closeGridPanel() {
+  document.getElementById('grid-panel').classList.remove('open');
+  document.getElementById('grid-panel-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
 }
-
-function closeGridPopup() {
-  document.getElementById('grid-popup').classList.remove('open');
-}
-
-document.addEventListener('click', e => {
-  const popup = document.getElementById('grid-popup');
-  if (popup.classList.contains('open') && !popup.contains(e.target)) closeGridPopup();
-});
 
 // ── Cancel queue state (track pending cancellations locally) ───────────
 const pendingCancels = new Set();
@@ -1551,7 +1674,7 @@ async function fetchTrades() {
       }
 
       activeTbody.innerHTML = activeOrders.map(o => `<tr style="cursor:pointer" title="Click to see grid context"
-          onclick="openGridPopup('${o.pair}',${o.price},'${o.side}','open order',event)"
+          onclick="openGridPanel('${o.pair}',${o.price},'${o.side}','open order',event)"
           onmouseenter="this.style.background='rgba(59,130,246,.06)'" onmouseleave="this.style.background=''">
         <td><strong>${o.pair}</strong></td>
         <td class="${o.side==='buy'?'buy':'sell'}">${o.side.toUpperCase()}</td>
@@ -1680,7 +1803,7 @@ async function fetchTrades() {
       const rowClass = isUntracked ? 'untracked-sell' : '';
       const fillSide = f.side === 'BUY' ? 'buy' : 'sell';
       ftbody.innerHTML += `<tr class="${rowClass}" style="cursor:pointer" title="Click to see grid context"
-          onclick="openGridPopup('${f.pair}',${f.price},'${fillSide}','filled ${f.timestamp?.split(' ')[1]||''}',event)"
+          onclick="openGridPanel('${f.pair}',${f.price},'${fillSide}','filled ${f.timestamp?.split(' ')[1]||''}',event)"
           onmouseenter="this.style.background='rgba(59,130,246,.06)'" onmouseleave="this.style.background=''">
         <td style="color:#8892a0;font-size:12px">${f.timestamp}</td>
         <td><strong>${f.pair}</strong></td>
