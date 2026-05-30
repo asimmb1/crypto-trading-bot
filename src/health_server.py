@@ -488,30 +488,73 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
   .trip-meta{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
 
   /* ── Grid Context Popup ── */
-  #grid-popup{display:none;position:fixed;z-index:600;background:#181c2a;border:1px solid var(--border);border-radius:13px;padding:18px;min-width:260px;max-width:320px;box-shadow:0 12px 48px rgba(0,0,0,.75);}
+  #grid-popup{
+    display:none;position:fixed;z-index:600;
+    background:#13172a;border:1px solid var(--border);border-radius:14px;
+    padding:16px;width:340px;max-width:calc(100vw - 24px);
+    box-shadow:0 16px 56px rgba(0,0,0,.8);
+  }
   #grid-popup.open{display:block;}
-  .gp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
-  .gp-title{font-size:13px;font-weight:700;}
-  .gp-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:0 2px;}
+  .gp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;}
+  .gp-title{font-size:13px;font-weight:700;flex:1;}
+  .gp-header-btns{display:flex;gap:6px;align-items:center;}
+  .gp-demo-btn{
+    font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;
+    border:1px solid var(--blue);color:var(--blue);background:rgba(59,130,246,.1);
+  }
+  .gp-demo-btn:hover{background:rgba(59,130,246,.25);}
+  .gp-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;}
   .gp-close:hover{color:var(--text);}
-  .gp-ladder{display:flex;flex-direction:column;gap:1px;}
-  .gp-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:5px;font-size:12px;}
-  .gp-row.gp-focused{background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.4);}
-  .gp-row.gp-filled{background:rgba(139,92,246,.1);}
-  .gp-divider{border-top:1px dashed rgba(255,255,255,.1);margin:4px 0;}
-  .gp-price{font-family:monospace;font-size:11px;width:76px;flex-shrink:0;}
-  .gp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-  .gp-dot-buy{background:var(--green);}
-  .gp-dot-sell{background:var(--red);}
-  .gp-dot-filled{background:var(--purple);}
-  .gp-dot-slot{background:rgba(255,255,255,.12);}
-  .gp-lbl{font-size:11px;}
-  .gp-lbl.buy{color:var(--green);}
-  .gp-lbl.sell{color:var(--red);}
-  .gp-lbl.filled{color:var(--purple);}
-  .gp-lbl.slot{color:var(--muted);}
-  .gp-lbl.focused{color:var(--blue);font-weight:700;}
-  .gp-tip{font-size:10px;color:var(--muted);text-align:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}
+  .gp-section-hdr{
+    font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--muted);margin:10px 0 4px;
+  }
+  .gp-empty{font-size:11px;color:var(--muted);padding:6px 0;}
+  /* Order rows */
+  .gp-row{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 8px;border-radius:6px;margin:2px 0;
+    border-left:3px solid transparent;font-size:12px;
+  }
+  .gp-row-sell  {border-left-color:var(--red);   background:rgba(239,68,68,.07);}
+  .gp-row-buy   {border-left-color:var(--green);  background:rgba(16,185,129,.07);}
+  .gp-row-focus {border-left-color:var(--blue);   background:rgba(59,130,246,.14);border:1px solid rgba(59,130,246,.35);}
+  /* Fill rows */
+  .gp-row-fill-buy  {border-left-color:var(--purple); background:rgba(139,92,246,.07);}
+  .gp-row-fill-sell {border-left-color:var(--yellow);  background:rgba(245,158,11,.07);}
+  /* Market zone divider */
+  .gp-zone-div{
+    display:flex;align-items:center;gap:6px;margin:6px 0;
+    font-size:10px;color:var(--muted);
+  }
+  .gp-zone-div::before,.gp-zone-div::after{content:'';flex:1;border-top:1px dashed rgba(255,255,255,.12);}
+  /* Row parts */
+  .gp-price{font-family:monospace;font-size:11px;width:78px;flex-shrink:0;color:var(--text);}
+  .gp-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0;}
+  .gp-icon-sell  {color:var(--red);}
+  .gp-icon-buy   {color:var(--green);}
+  .gp-icon-focus {color:var(--blue);}
+  .gp-icon-fbuy  {color:var(--purple);}
+  .gp-icon-fsell {color:var(--yellow);}
+  .gp-label{font-size:11px;flex:1;}
+  .gp-label-sell  {color:var(--red);}
+  .gp-label-buy   {color:var(--green);}
+  .gp-label-focus {color:var(--blue);font-weight:700;}
+  .gp-label-fbuy  {color:var(--purple);}
+  .gp-label-fsell {color:var(--yellow);}
+  .gp-time{font-size:10px;color:var(--muted);flex-shrink:0;}
+  /* Legend */
+  .gp-legend{
+    display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:10px;
+    border-top:1px solid var(--border);font-size:10px;
+  }
+  .gp-legend-item{display:flex;align-items:center;gap:4px;white-space:nowrap;}
+  /* Demo banner */
+  .gp-demo-banner{
+    background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);
+    border-radius:6px;padding:5px 10px;margin-bottom:10px;
+    font-size:10px;color:var(--blue);text-align:center;
+  }
 
   /* ── Mobile responsive ── */
   @media (max-width: 640px) {
@@ -827,10 +870,25 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
 <div id="grid-popup">
   <div class="gp-header">
     <span class="gp-title" id="gp-title">Grid Context</span>
-    <button class="gp-close" onclick="closeGridPopup()">&#x2715;</button>
+    <div class="gp-header-btns">
+      <button class="gp-demo-btn" onclick="showGridDemo()">&#x1F4CB; Demo</button>
+      <button class="gp-close" onclick="closeGridPopup()">&#x2715;</button>
+    </div>
   </div>
-  <div class="gp-ladder" id="gp-ladder"></div>
-  <p class="gp-tip">Click anywhere outside to close</p>
+  <div id="gp-demo-banner" class="gp-demo-banner" style="display:none">
+    Demo mode — showing all possible states
+  </div>
+  <div class="gp-section-hdr">Open Orders</div>
+  <div id="gp-orders"></div>
+  <div class="gp-section-hdr" id="gp-fills-hdr" style="display:none">Recent Fills (this pair)</div>
+  <div id="gp-fills"></div>
+  <div class="gp-legend">
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-sell">●</span><span style="color:var(--red)">Open SELL</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-buy">●</span><span style="color:var(--green)">Open BUY</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-focus">▶</span><span style="color:var(--blue)">This order</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-fsell">★</span><span style="color:var(--yellow)">Sell filled</span></span>
+    <span class="gp-legend-item"><span class="gp-icon gp-icon-fbuy">✓</span><span style="color:var(--purple)">Buy filled</span></span>
+  </div>
 </div>
 
 <script>
@@ -975,85 +1033,142 @@ function renderTripsModal() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// GRID CONTEXT POPUP
+// GRID CONTEXT POPUP — v2
+// Uses ACTUAL orders for the pair (not calculated levels) so colors are always
+// accurate. Shows fills for the same pair below the orders section.
 // ══════════════════════════════════════════════════════════════════════════════
+
+function _gpOrderRow(price, side, isFocus) {
+  const rowCls = isFocus ? 'gp-row gp-row-focus'
+               : side === 'sell' ? 'gp-row gp-row-sell' : 'gp-row gp-row-buy';
+  const iconCls = isFocus ? 'gp-icon gp-icon-focus'
+                : side === 'sell' ? 'gp-icon gp-icon-sell' : 'gp-icon gp-icon-buy';
+  const icon  = isFocus ? '&#x25B6;' : '&#x25CF;';
+  const lblCls = isFocus ? 'gp-label gp-label-focus'
+               : side === 'sell' ? 'gp-label gp-label-sell' : 'gp-label gp-label-buy';
+  const label = isFocus
+    ? `&#x2190; ${side.toUpperCase()} &mdash; you clicked this`
+    : side === 'sell'
+      ? 'SELL &mdash; open, waiting to fill at profit'
+      : 'BUY &mdash; open, waiting to fill';
+  const dp = price < 1 ? 4 : price < 100 ? 4 : 2;
+  return `<div class="${rowCls}">
+    <span class="gp-price">$${parseFloat(price).toFixed(dp)}</span>
+    <span class="${iconCls}">${icon}</span>
+    <span class="${lblCls}">${label}</span>
+  </div>`;
+}
+
+function _gpFillRow(price, side, timestamp, pnl) {
+  const isRoundTrip = side === 'SELL' && pnl !== null && pnl !== undefined;
+  const rowCls  = isRoundTrip ? 'gp-row gp-row-fill-sell' : 'gp-row gp-row-fill-buy';
+  const iconCls = isRoundTrip ? 'gp-icon gp-icon-fsell'   : 'gp-icon gp-icon-fbuy';
+  const icon    = isRoundTrip ? '&#x2605;' : '&#x2713;';
+  const lblCls  = isRoundTrip ? 'gp-label gp-label-fsell' : 'gp-label gp-label-fbuy';
+  const label   = isRoundTrip
+    ? `SELL filled &mdash; round trip! &nbsp;<strong>+$${pnl.toFixed(4)}</strong>`
+    : `${side} filled &mdash; counter-sell placed above`;
+  const time    = (timestamp || '').split(' ')[1] || '';
+  const dp = price < 1 ? 4 : price < 100 ? 4 : 2;
+  return `<div class="${rowCls}">
+    <span class="gp-price">$${parseFloat(price).toFixed(dp)}</span>
+    <span class="${iconCls}">${icon}</span>
+    <span class="${lblCls}">${label}</span>
+    <span class="gp-time">${time}</span>
+  </div>`;
+}
+
+function _renderGridPopup(title, allOrders, pairFills, focusPrice, focusSide, isDemo) {
+  const fp = parseFloat(focusPrice);
+
+  // Split orders into sells (above) and buys (below), sorted by price
+  const sells = allOrders.filter(o => o.side === 'sell').sort((a,b) => b.price - a.price);
+  const buys  = allOrders.filter(o => o.side === 'buy').sort((a,b) => b.price - a.price);
+
+  // Render SELL orders (above market)
+  let ordersHtml = '';
+  sells.forEach(o => {
+    const isFocus = Math.abs(parseFloat(o.price) - fp) < fp * 0.001;
+    ordersHtml += _gpOrderRow(o.price, 'sell', isFocus);
+  });
+
+  // Market zone divider (only when we have both sides)
+  if (sells.length > 0 && buys.length > 0) {
+    ordersHtml += `<div class="gp-zone-div">market&nbsp;zone</div>`;
+  } else if (sells.length > 0) {
+    ordersHtml += `<div class="gp-zone-div">&#x25BC;&nbsp;market&nbsp;below</div>`;
+  } else if (buys.length > 0) {
+    ordersHtml += `<div class="gp-zone-div">market&nbsp;above&nbsp;&#x25B2;</div>`;
+  }
+
+  // BUY orders (below market)
+  buys.forEach(o => {
+    const isFocus = Math.abs(parseFloat(o.price) - fp) < fp * 0.001;
+    ordersHtml += _gpOrderRow(o.price, 'buy', isFocus);
+  });
+
+  // If the focus price isn't in either list (e.g. a fill with no active order)
+  const focusInOrders = allOrders.some(o => Math.abs(parseFloat(o.price) - fp) < fp * 0.001);
+  if (!focusInOrders) {
+    ordersHtml = _gpOrderRow(fp, focusSide, true) + (ordersHtml ? '<div class="gp-zone-div"></div>' + ordersHtml : '');
+  }
+
+  document.getElementById('gp-orders').innerHTML = ordersHtml || '<div class="gp-empty">No open orders for this pair</div>';
+
+  // Fills section
+  const fills = pairFills.slice(0, 6);
+  const fillsHdr = document.getElementById('gp-fills-hdr');
+  const fillsEl  = document.getElementById('gp-fills');
+  if (fills.length > 0) {
+    fillsHdr.style.display = 'block';
+    fillsEl.innerHTML = fills.map(f => _gpFillRow(f.price, f.side, f.timestamp, f.pnl)).join('');
+  } else {
+    fillsHdr.style.display = 'none';
+    fillsEl.innerHTML = '';
+  }
+
+  // Title and demo banner
+  document.getElementById('gp-title').textContent = title;
+  document.getElementById('gp-demo-banner').style.display = isDemo ? 'block' : 'none';
+}
 
 function openGridPopup(pair, focusPrice, focusSide, focusLabel, event) {
   event && event.stopPropagation();
-  const popup = document.getElementById('grid-popup');
-
-  const spacing    = _spacingPct / 100;
-  const fp         = parseFloat(focusPrice);
   const pairOrders = _activeOrders.filter(o => o.pair === pair);
   const pairFills  = _recentFills.filter(f => f.pair === pair);
+  _renderGridPopup(pair + ' — Grid Context', pairOrders, pairFills, focusPrice, focusSide, false);
+  _positionGridPopup(event);
+}
 
-  // Build orderMap keyed by price rounded to 4dp
-  const orderMap = {};
-  pairOrders.forEach(o => { orderMap[parseFloat(o.price).toFixed(4)] = o; });
-  const fillPrices = new Set(pairFills.map(f => parseFloat(f.price).toFixed(4)));
+function showGridDemo() {
+  // Demo showing every possible state so users understand what each color means.
+  // Uses a realistic SOL-like scenario mid-session.
+  const demoOrders = [
+    { side: 'sell', price: 84.85 },  // counter-sell placed after buy filled
+    { side: 'sell', price: 83.91 },  // counter-sell placed after buy filled
+    { side: 'sell', price: 83.00 },  // recovery sell (this is the focus)
+    { side: 'buy',  price: 81.00 },  // open buy — waiting to fill
+    { side: 'buy',  price: 80.19 },  // open buy — waiting to fill
+    { side: 'buy',  price: 79.39 },  // open buy — waiting to fill
+  ];
+  const demoFills = [
+    { side: 'BUY',  price: 84.00, timestamp: '2026-05-30 10:40', pnl: null },
+    { side: 'BUY',  price: 83.17, timestamp: '2026-05-30 10:39', pnl: null },
+    { side: 'SELL', price: 83.50, timestamp: '2026-05-30 10:38', pnl: 0.1012 },
+    { side: 'SELL', price: 83.25, timestamp: '2026-05-30 10:37', pnl: 0.5955 },
+  ];
+  _renderGridPopup('SOL/USDT — Demo (all states)', demoOrders, demoFills, 83.00, 'sell', true);
+  _positionGridPopup(null);
+}
 
-  // Determine price display precision (same logic as grid_bot.py)
-  function priceDp(price, sp) {
-    const step = price * sp;
-    if (step <= 0) return 4;
-    return Math.min(8, Math.max(4, Math.ceil(-Math.log10(step)) + 1));
-  }
-  const dp = priceDp(fp, spacing);
-  const fmt = v => '$' + parseFloat(v).toFixed(dp);
-
-  // Build 5 levels above + focus + 5 levels below — no duplicates
-  const aboveLevels = [];
-  const belowLevels = [];
-  for (let i = 1; i <= 5; i++) {
-    aboveLevels.push(parseFloat((fp * (1 + i * spacing)).toFixed(dp)));
-    belowLevels.push(parseFloat((fp * (1 - i * spacing)).toFixed(dp)));
-  }
-  aboveLevels.sort((a,b) => b - a); // descending (highest first)
-
-  // Helper to render one row
-  function rowHtml(lvl, isFocusRow) {
-    const key     = parseFloat(lvl).toFixed(4);
-    const order   = orderMap[key];
-    const isFill  = fillPrices.has(key);
-    const isAbove = lvl > fp + fp * 0.0001;
-
-    let dotCls, lblCls, lblText;
-    if (isFocusRow) {
-      dotCls  = 'gp-dot-filled'; lblCls = 'focused';
-      lblText = '&#x2190; ' + focusSide.toUpperCase() + ' (this)';
-    } else if (order) {
-      dotCls  = order.side === 'buy' ? 'gp-dot-buy' : 'gp-dot-sell';
-      lblCls  = order.side;
-      lblText = order.side.toUpperCase() + ' &mdash; open';
-    } else if (isFill) {
-      dotCls  = 'gp-dot-filled'; lblCls = 'filled';
-      lblText = (isAbove ? 'SELL' : 'BUY') + ' &mdash; filled';
-    } else {
-      dotCls  = 'gp-dot-slot'; lblCls = 'slot';
-      lblText = isAbove ? 'SELL slot' : 'BUY slot';
-    }
-    return `<div class="gp-row ${isFocusRow ? 'gp-focused' : ''} ${(isFill && !isFocusRow) ? 'gp-filled' : ''}">
-      <span class="gp-price">${fmt(lvl)}</span>
-      <div class="gp-dot ${dotCls}"></div>
-      <span class="gp-lbl ${lblCls}">${lblText}</span>
-    </div>`;
-  }
-
-  let html = '';
-  aboveLevels.forEach(lvl => { html += rowHtml(lvl, false); });
-  html += '<div class="gp-divider"></div>';
-  html += rowHtml(fp, true);   // focus row — rendered exactly once
-  html += '<div class="gp-divider"></div>';
-  belowLevels.forEach(lvl => { html += rowHtml(lvl, false); });
-
-  document.getElementById('gp-title').textContent = pair + ' — Grid Context';
-  document.getElementById('gp-ladder').innerHTML = html;
-
-  // ── Position popup near the click ────────────────────────────────────────
+function _positionGridPopup(event) {
+  const popup = document.getElementById('grid-popup');
   popup.classList.add('open');
+  popup.style.transform = '';
   if (event) {
-    const x = Math.min(event.clientX + 12, window.innerWidth  - 330);
-    const y = Math.min(event.clientY - 20,  window.innerHeight - 420);
+    const pw = 348, ph = 500;
+    const x = Math.min(event.clientX + 14, window.innerWidth  - pw - 8);
+    const y = Math.min(event.clientY - 10, window.innerHeight - ph - 8);
     popup.style.left = Math.max(8, x) + 'px';
     popup.style.top  = Math.max(8, y) + 'px';
   } else {
@@ -1067,7 +1182,6 @@ function closeGridPopup() {
   document.getElementById('grid-popup').classList.remove('open');
 }
 
-// Clicking outside the popup closes it (but not if clicking the popup itself)
 document.addEventListener('click', e => {
   const popup = document.getElementById('grid-popup');
   if (popup.classList.contains('open') && !popup.contains(e.target)) closeGridPopup();
