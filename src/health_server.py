@@ -982,86 +982,69 @@ function openGridPopup(pair, focusPrice, focusSide, focusLabel, event) {
   event && event.stopPropagation();
   const popup = document.getElementById('grid-popup');
 
-  // ── Build price ladder ───────────────────────────────────────────────────
-  // Collect all known prices for this pair from open orders + recent fills
-  const spacing = _spacingPct / 100;
-  const fp      = parseFloat(focusPrice);
-
-  // Active orders for this pair
+  const spacing    = _spacingPct / 100;
+  const fp         = parseFloat(focusPrice);
   const pairOrders = _activeOrders.filter(o => o.pair === pair);
-  // Recent fills for this pair
   const pairFills  = _recentFills.filter(f => f.pair === pair);
 
-  // Generate 5 levels above + 5 below focus price using configured spacing
-  const allLevels = [];
-  for (let i = -5; i <= 5; i++) {
-    if (i === 0) continue;
-    allLevels.push(parseFloat((fp * (1 + i * spacing)).toFixed(6)));
-  }
-  // Also include all actual open order prices (may differ from calculated)
-  pairOrders.forEach(o => { if (!allLevels.some(l => Math.abs(l - o.price) < fp * 0.001)) allLevels.push(o.price); });
-  allLevels.sort((a,b) => b - a);  // descending
-
-  // Map for quick lookup
-  const orderMap  = {};
-  pairOrders.forEach(o => { orderMap[o.price.toFixed(4)] = o; });
+  // Build orderMap keyed by price rounded to 4dp
+  const orderMap = {};
+  pairOrders.forEach(o => { orderMap[parseFloat(o.price).toFixed(4)] = o; });
   const fillPrices = new Set(pairFills.map(f => parseFloat(f.price).toFixed(4)));
 
-  // ── Render rows ──────────────────────────────────────────────────────────
-  let html = '';
-  let belowFocus = false;
-  allLevels.forEach(lvl => {
-    const lvlKey  = lvl.toFixed(4);
-    const isFocus = Math.abs(lvl - fp) < fp * 0.0005;
-    const order   = orderMap[lvlKey];
-    const isFill  = fillPrices.has(lvlKey);
-    const isAbove = lvl > fp;
+  // Determine price display precision (same logic as grid_bot.py)
+  function priceDp(price, sp) {
+    const step = price * sp;
+    if (step <= 0) return 4;
+    return Math.min(8, Math.max(4, Math.ceil(-Math.log10(step)) + 1));
+  }
+  const dp = priceDp(fp, spacing);
+  const fmt = v => '$' + parseFloat(v).toFixed(dp);
 
-    if (!belowFocus && lvl < fp) {
-      // Insert divider at current price
-      html += `<div class="gp-divider"></div>
-        <div class="gp-row" style="opacity:.6;font-size:10px;color:var(--muted)">
-          <span class="gp-price">$${fp.toFixed(4)}</span>
-          <div class="gp-dot gp-dot-slot"></div>
-          <span class="gp-lbl slot">${focusLabel}</span>
-        </div>
-        <div class="gp-divider"></div>`;
-      belowFocus = true;
-    }
+  // Build 5 levels above + focus + 5 levels below — no duplicates
+  const aboveLevels = [];
+  const belowLevels = [];
+  for (let i = 1; i <= 5; i++) {
+    aboveLevels.push(parseFloat((fp * (1 + i * spacing)).toFixed(dp)));
+    belowLevels.push(parseFloat((fp * (1 - i * spacing)).toFixed(dp)));
+  }
+  aboveLevels.sort((a,b) => b - a); // descending (highest first)
+
+  // Helper to render one row
+  function rowHtml(lvl, isFocusRow) {
+    const key     = parseFloat(lvl).toFixed(4);
+    const order   = orderMap[key];
+    const isFill  = fillPrices.has(key);
+    const isAbove = lvl > fp + fp * 0.0001;
 
     let dotCls, lblCls, lblText;
-    if (isFocus) {
-      dotCls  = 'gp-dot-filled';
-      lblCls  = 'focused';
-      lblText = '← ' + focusSide.toUpperCase() + ' (this)';
-    } else if (isFill && !order) {
-      dotCls  = 'gp-dot-filled';
-      lblCls  = 'filled';
-      lblText = (isAbove ? 'SELL' : 'BUY') + ' — filled';
+    if (isFocusRow) {
+      dotCls  = 'gp-dot-filled'; lblCls = 'focused';
+      lblText = '&#x2190; ' + focusSide.toUpperCase() + ' (this)';
     } else if (order) {
       dotCls  = order.side === 'buy' ? 'gp-dot-buy' : 'gp-dot-sell';
       lblCls  = order.side;
-      lblText = order.side.toUpperCase() + ' — open';
+      lblText = order.side.toUpperCase() + ' &mdash; open';
+    } else if (isFill) {
+      dotCls  = 'gp-dot-filled'; lblCls = 'filled';
+      lblText = (isAbove ? 'SELL' : 'BUY') + ' &mdash; filled';
     } else {
-      dotCls  = 'gp-dot-slot';
-      lblCls  = 'slot';
-      lblText = (isAbove ? 'SELL' : 'BUY') + ' slot';
+      dotCls  = 'gp-dot-slot'; lblCls = 'slot';
+      lblText = isAbove ? 'SELL slot' : 'BUY slot';
     }
-
-    html += `<div class="gp-row ${isFocus ? 'gp-focused' : ''} ${(isFill && !isFocus) ? 'gp-filled' : ''}">
-      <span class="gp-price">$${lvl.toFixed(4)}</span>
+    return `<div class="gp-row ${isFocusRow ? 'gp-focused' : ''} ${(isFill && !isFocusRow) ? 'gp-filled' : ''}">
+      <span class="gp-price">${fmt(lvl)}</span>
       <div class="gp-dot ${dotCls}"></div>
       <span class="gp-lbl ${lblCls}">${lblText}</span>
     </div>`;
-  });
-  if (!belowFocus) {
-    html += `<div class="gp-divider"></div>
-      <div class="gp-row" style="opacity:.6;font-size:10px;color:var(--muted)">
-        <span class="gp-price">$${fp.toFixed(4)}</span>
-        <div class="gp-dot gp-dot-slot"></div>
-        <span class="gp-lbl slot">${focusLabel}</span>
-      </div>`;
   }
+
+  let html = '';
+  aboveLevels.forEach(lvl => { html += rowHtml(lvl, false); });
+  html += '<div class="gp-divider"></div>';
+  html += rowHtml(fp, true);   // focus row — rendered exactly once
+  html += '<div class="gp-divider"></div>';
+  belowLevels.forEach(lvl => { html += rowHtml(lvl, false); });
 
   document.getElementById('gp-title').textContent = pair + ' — Grid Context';
   document.getElementById('gp-ladder').innerHTML = html;
