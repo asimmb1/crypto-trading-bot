@@ -1126,19 +1126,34 @@ function _gpOrderRow(price, side, isFocus) {
 }
 
 function _gpFillRow(price, side, timestamp, pnl) {
-  const isRoundTrip = side === 'SELL' && pnl !== null && pnl !== undefined;
-  const rowCls  = isRoundTrip ? 'gp-row gp-row-fill-sell' : 'gp-row gp-row-fill-buy';
-  const iconCls = isRoundTrip ? 'gp-icon gp-icon-fsell'   : 'gp-icon gp-icon-fbuy';
-  const icon    = isRoundTrip ? '&#x2605;' : '&#x2713;';
-  const lblCls  = isRoundTrip ? 'gp-label gp-label-fsell' : 'gp-label gp-label-fbuy';
-  const label   = isRoundTrip
-    ? `SELL filled &mdash; round trip! &nbsp;<strong>+$${pnl.toFixed(4)}</strong>`
-    : `${side} filled &mdash; counter-sell placed above`;
-  const time    = (timestamp || '').split(' ')[1] || '';
-  const dp = price < 1 ? 4 : price < 100 ? 4 : 2;
-  return `<div class="${rowCls}">
+  const isBuy        = side === 'BUY';
+  const isTrackedTrip = !isBuy && pnl !== null && pnl !== undefined;
+  const isUntrackedSell = !isBuy && !isTrackedTrip;
+
+  // Colour:  BUY→purple ✓ | SELL tracked→yellow ★ | SELL untracked→muted ~
+  const rowCls  = isTrackedTrip   ? 'gp-row gp-row-fill-sell'
+                : isBuy           ? 'gp-row gp-row-fill-buy'
+                : 'gp-row' ; // untracked sell — plain row
+  const iconCls = isTrackedTrip   ? 'gp-icon gp-icon-fsell'
+                : isBuy           ? 'gp-icon gp-icon-fbuy'
+                : 'gp-icon';
+  const icon    = isTrackedTrip   ? '&#x2605;'   // ★
+                : isBuy           ? '&#x2713;'   // ✓
+                : '&#x7E;';                       // ~
+  const lblCls  = isTrackedTrip   ? 'gp-label gp-label-fsell'
+                : isBuy           ? 'gp-label gp-label-fbuy'
+                : 'gp-label';
+  const label   = isTrackedTrip
+    ? `SELL filled &mdash; round trip! &nbsp;<strong>+$${parseFloat(pnl).toFixed(4)}</strong>`
+    : isBuy
+      ? `BUY filled &mdash; counter-sell placed above`
+      : `<span style="color:var(--muted)">SELL filled &mdash; P&amp;L not tracked (recovery sell)</span>`;
+
+  const time = (timestamp || '').split(' ')[1]?.slice(0,8) || '';
+  const dp   = parseFloat(price) < 1 ? 4 : parseFloat(price) < 100 ? 4 : 2;
+  return `<div class="${rowCls}" style="${isUntrackedSell ? 'border-left:3px solid rgba(136,146,160,.3);background:rgba(136,146,160,.04)' : ''}">
     <span class="gp-price">$${parseFloat(price).toFixed(dp)}</span>
-    <span class="${iconCls}">${icon}</span>
+    <span class="${iconCls}" style="${isUntrackedSell ? 'color:var(--muted)' : ''}">${icon}</span>
     <span class="${lblCls}">${label}</span>
     <span class="gp-time">${time}</span>
   </div>`;
