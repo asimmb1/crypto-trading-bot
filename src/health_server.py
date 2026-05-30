@@ -200,15 +200,55 @@ def _get_trade_stats() -> dict:
             pass
 
     return {
-        "available":     True,
-        "summary":       summary,
-        "pairs":         dict(pairs),
-        "recent":        recent,
-        "reconciled":    reconciled,
-        "active_orders": active_orders,
-        "balance":       balance,
-        "generated_at":  datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        "available":        True,
+        "summary":          summary,
+        "pairs":            dict(pairs),
+        "recent":           recent,
+        "reconciled":       reconciled,
+        "active_orders":    active_orders,
+        "balance":          balance,
+        "grid_spacing_pct": float(os.environ.get("GRID_SPACING_PCT", 1.0)),
+        "generated_at":     datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
+
+
+def _get_round_trips() -> list:
+    """
+    Return every completed round trip (sell fill with tracked P&L) from trades.db,
+    enriched with inferred buy price and gross return %.
+    """
+    if not os.path.exists(DB_PATH):
+        return []
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT * FROM trades WHERE side='sell' AND pnl IS NOT NULL ORDER BY timestamp DESC"
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return []
+
+    trips = []
+    for r in rows:
+        sell_price = float(r["price"] or 0)
+        amount     = float(r["amount"] or 0)
+        pnl        = float(r["pnl"] or 0)
+        # Infer buy price from: pnl = amount × (sell - buy)  →  buy = sell - pnl/amount
+        buy_price  = round(sell_price - pnl / amount, 6) if amount > 0 else None
+        gross_pct  = round(pnl / (buy_price * amount) * 100, 3) if buy_price and buy_price > 0 and amount > 0 else None
+        trips.append({
+            "id":         r["id"],
+            "pair":       r["pair"],
+            "bot_type":   r["bot_type"],
+            "timestamp":  r["timestamp"][:19].replace("T", " "),
+            "sell_price": sell_price,
+            "buy_price":  buy_price,
+            "amount":     round(amount, 6),
+            "pnl":        pnl,
+            "gross_pct":  gross_pct,
+        })
+    return trips
 
 
 _DASHBOARD_HTML = """<!DOCTYPE html>
@@ -414,6 +454,65 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
   .match-ok{background:rgba(16,185,129,.15);color:var(--green);}
   .match-warn{background:rgba(245,158,11,.15);color:var(--yellow);}
 
+  /* ── Round Trips History Modal ── */
+  #trips-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;overflow-y:auto;}
+  #trips-modal.open{display:block;}
+  .trips-inner{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+  .trips-topbar{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap;}
+  .trips-topbar h2{font-size:18px;font-weight:700;flex:1;}
+  .trips-close-btn{background:none;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 16px;cursor:pointer;font-size:13px;}
+  .trips-close-btn:hover{background:var(--border);}
+  .trips-stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px;}
+  .trips-kpi{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 18px;flex:1;min-width:120px;}
+  .trips-kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+  .trips-kpi-value{font-size:20px;font-weight:700;}
+  .trips-chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:22px;}
+  .trips-chart-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
+  .trips-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .trips-filter-btn{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s;}
+  .trips-filter-btn.active,.trips-filter-btn:hover{border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.1);}
+  .trips-empty{text-align:center;color:var(--muted);padding:60px 0;font-size:14px;}
+  .trips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+  .trip-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;transition:border-color .15s;}
+  .trip-card:hover{border-color:var(--blue);}
+  .trip-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+  .trip-pair-badge{font-size:11px;font-weight:700;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:4px;}
+  .trip-bot-badge{font-size:10px;color:var(--blue);background:rgba(59,130,246,.1);padding:1px 6px;border-radius:3px;}
+  .trip-pnl{font-size:20px;font-weight:700;}
+  .trip-bar-section{margin:10px 0 6px;}
+  .trip-bar-track{height:6px;border-radius:3px;background:rgba(255,255,255,.06);position:relative;overflow:hidden;}
+  .trip-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,rgba(16,185,129,.4),var(--green));}
+  .trip-prices{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px;}
+  .trip-prices .tp-buy{color:var(--green);}
+  .trip-prices .tp-sell{color:var(--red);}
+  .trip-meta{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+
+  /* ── Grid Context Popup ── */
+  #grid-popup{display:none;position:fixed;z-index:600;background:#181c2a;border:1px solid var(--border);border-radius:13px;padding:18px;min-width:260px;max-width:320px;box-shadow:0 12px 48px rgba(0,0,0,.75);}
+  #grid-popup.open{display:block;}
+  .gp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .gp-title{font-size:13px;font-weight:700;}
+  .gp-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:0 2px;}
+  .gp-close:hover{color:var(--text);}
+  .gp-ladder{display:flex;flex-direction:column;gap:1px;}
+  .gp-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:5px;font-size:12px;}
+  .gp-row.gp-focused{background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.4);}
+  .gp-row.gp-filled{background:rgba(139,92,246,.1);}
+  .gp-divider{border-top:1px dashed rgba(255,255,255,.1);margin:4px 0;}
+  .gp-price{font-family:monospace;font-size:11px;width:76px;flex-shrink:0;}
+  .gp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .gp-dot-buy{background:var(--green);}
+  .gp-dot-sell{background:var(--red);}
+  .gp-dot-filled{background:var(--purple);}
+  .gp-dot-slot{background:rgba(255,255,255,.12);}
+  .gp-lbl{font-size:11px;}
+  .gp-lbl.buy{color:var(--green);}
+  .gp-lbl.sell{color:var(--red);}
+  .gp-lbl.filled{color:var(--purple);}
+  .gp-lbl.slot{color:var(--muted);}
+  .gp-lbl.focused{color:var(--blue);font-weight:700;}
+  .gp-tip{font-size:10px;color:var(--muted);text-align:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}
+
   /* ── Mobile responsive ── */
   @media (max-width: 640px) {
     body { padding: 12px; }
@@ -616,12 +715,12 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="stat-sub" id="s-winrate-sub"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="rt-card" onclick="openTripsModal()" style="cursor:pointer;transition:border-color .2s;" onmouseenter="this.style.borderColor='var(--blue)'" onmouseleave="this.style.borderColor=''">
     <div class="stat-label">Round Trips
-      <span class="cinfo">?<span class="ctip"><b>Completed Buy&rarr;Sell Cycles</b><br>Each round trip = one buy order filled + its counter-sell order filled.<br><br>Every round trip earns approximately the grid spacing% on one order&apos;s capital. More round trips in a sideways market = the grid is working.</span></span>
+      <span class="cinfo">?<span class="ctip"><b>Completed Buy&rarr;Sell Cycles</b><br>Each round trip = one buy order filled + its counter-sell order filled.<br><br>Click this card to see the full history — entry/exit prices, P&L chart, and per-trip breakdown.</span></span>
     </div>
     <div class="stat-value" id="s-rt">—</div>
-    <div class="stat-sub" id="s-rt-sub"></div>
+    <div class="stat-sub" id="s-rt-sub" style="color:var(--blue);font-size:10px">click to view history →</div>
   </div>
 
   <div class="card">
@@ -707,9 +806,289 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
 
 <div id="refresh-bar">Auto-refreshing every 60s <progress id="prog" max="60" value="60"></progress></div>
 
+<!-- ── Round Trip History Modal ──────────────────────────────────────── -->
+<div id="trips-modal">
+  <div class="trips-inner">
+    <div class="trips-topbar">
+      <button class="trips-close-btn" onclick="closeTripsModal()">← Back to Dashboard</button>
+      <h2>&#x1F504; Round Trip History</h2>
+    </div>
+    <div class="trips-stats-row" id="trips-kpis"></div>
+    <div class="trips-chart-wrap">
+      <div class="trips-chart-title">Cumulative P&amp;L over time</div>
+      <canvas id="trips-chart" style="max-height:180px"></canvas>
+    </div>
+    <div class="trips-filters" id="trips-filters"></div>
+    <div id="trips-list"></div>
+  </div>
+</div>
+
+<!-- ── Grid Context Popup ─────────────────────────────────────────────── -->
+<div id="grid-popup">
+  <div class="gp-header">
+    <span class="gp-title" id="gp-title">Grid Context</span>
+    <button class="gp-close" onclick="closeGridPopup()">&#x2715;</button>
+  </div>
+  <div class="gp-ladder" id="gp-ladder"></div>
+  <p class="gp-tip">Click anywhere outside to close</p>
+</div>
+
 <script>
-let fillsChart = null;
-let countdown = 60;
+let fillsChart  = null;
+let tripsChart  = null;
+let countdown   = 60;
+let _spacingPct = 1.0;   // updated from API response
+let _activeOrders = [];   // kept fresh for grid popup
+let _recentFills  = [];   // kept fresh for grid popup
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ROUND TRIP HISTORY MODAL
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _tripsData    = [];
+let _tripsFilter  = 'ALL';
+
+async function openTripsModal() {
+  document.getElementById('trips-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  _tripsData = await fetch('/api/round_trips').then(r => r.json()).catch(() => []);
+  renderTripsModal();
+}
+
+function closeTripsModal() {
+  document.getElementById('trips-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close on background click
+document.addEventListener('click', e => {
+  const modal = document.getElementById('trips-modal');
+  if (modal.classList.contains('open') && e.target === modal) closeTripsModal();
+});
+
+function renderTripsModal() {
+  const trips = _tripsData;
+
+  // ── KPI summary ──────────────────────────────────────────────────────────
+  const totalPnl  = trips.reduce((s,t) => s + (t.pnl || 0), 0);
+  const best      = trips.reduce((b,t) => t.pnl > (b?.pnl||0) ? t : b, null);
+  const pairs     = [...new Set(trips.map(t => t.pair))];
+  document.getElementById('trips-kpis').innerHTML = [
+    ['Total Trips',   trips.length,                                              ''],
+    ['Total P&L',     (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(4),  totalPnl >= 0 ? 'green' : 'red'],
+    ['Best Trade',    best ? ('+$' + best.pnl.toFixed(4) + ' ' + best.pair.split('/')[0]) : '—', 'green'],
+    ['Active Pairs',  pairs.length + ' pair' + (pairs.length !== 1 ? 's' : ''), ''],
+  ].map(([label,val,cls]) => `
+    <div class="trips-kpi">
+      <div class="trips-kpi-label">${label}</div>
+      <div class="trips-kpi-value ${cls}">${val}</div>
+    </div>`).join('');
+
+  // ── Cumulative P&L chart ─────────────────────────────────────────────────
+  const sorted    = [...trips].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+  let cum = 0;
+  const chartData = sorted.map(t => { cum += (t.pnl||0); return { x: t.timestamp, y: +cum.toFixed(6) }; });
+  if (tripsChart) { tripsChart.destroy(); tripsChart = null; }
+  const ctx = document.getElementById('trips-chart');
+  if (typeof Chart !== 'undefined' && chartData.length > 0) {
+    tripsChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: 'Cumulative P&L',
+          data: chartData,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16,185,129,.08)',
+          borderWidth: 2,
+          pointRadius: chartData.length < 30 ? 4 : 2,
+          pointBackgroundColor: '#10b981',
+          fill: true,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        responsive: true,
+        parsing: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { type: 'category', ticks: { color: '#8892a0', maxTicksLimit: 8 }, grid: { color: '#2a2d3a' } },
+          y: { ticks: { color: '#8892a0', callback: v => '$' + v.toFixed(3) }, grid: { color: '#2a2d3a' } },
+        }
+      }
+    });
+  } else if (chartData.length === 0) {
+    ctx.insertAdjacentHTML('beforebegin', '<p style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">No tracked round trips yet — P&L chart appears as sell orders complete</p>');
+  }
+
+  // ── Pair filter pills ────────────────────────────────────────────────────
+  const allPairs = ['ALL', ...new Set(trips.map(t => t.pair.split('/')[0]))];
+  document.getElementById('trips-filters').innerHTML = allPairs.map(p =>
+    `<button class="trips-filter-btn ${_tripsFilter === p ? 'active' : ''}"
+      onclick="_tripsFilter='${p}';renderTripsModal()">${p}</button>`
+  ).join('');
+
+  // ── Trip cards ───────────────────────────────────────────────────────────
+  const filtered = _tripsFilter === 'ALL' ? trips : trips.filter(t => t.pair.startsWith(_tripsFilter + '/'));
+  const listEl   = document.getElementById('trips-list');
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `<div class="trips-empty">
+      ${trips.length === 0
+        ? '&#x23F3; No round trips recorded yet. A round trip completes when a sell order fills with a tracked entry price. Keep the bot running &mdash; they will appear here as grid cycles complete.'
+        : 'No trips for this pair with current filter.'}
+    </div>`;
+    return;
+  }
+
+  listEl.innerHTML = '<div class="trips-grid">' + filtered.map(t => {
+    const pnlCls   = (t.pnl||0) >= 0 ? 'green' : 'red';
+    const pnlSign  = (t.pnl||0) >= 0 ? '+' : '';
+    const pct      = t.gross_pct != null ? ` (${t.gross_pct > 0 ? '+' : ''}${t.gross_pct.toFixed(2)}%)` : '';
+    // Bar fill: represent the spread as % of buy price range shown
+    const spread   = t.buy_price && t.sell_price ? ((t.sell_price - t.buy_price) / t.buy_price * 100) : 1;
+    const barW     = Math.min(100, Math.max(5, spread * 40));  // visual scale
+    const base     = t.pair.split('/')[0];
+    const botBadge = t.bot_type === 'dca' ? 'DCA' : 'GRID';
+    return `<div class="trip-card">
+      <div class="trip-card-top">
+        <span class="trip-pair-badge">${t.pair}</span>
+        <span class="trip-bot-badge">${botBadge}</span>
+      </div>
+      <div class="trip-pnl ${pnlCls}">${pnlSign}$${(t.pnl||0).toFixed(6)}${pct}</div>
+      <div class="trip-bar-section">
+        <div class="trip-bar-track">
+          <div class="trip-bar-fill" style="width:${barW}%"></div>
+        </div>
+        <div class="trip-prices">
+          <span class="tp-buy">&#x25BC; BUY $${(t.buy_price||0).toFixed(4)}</span>
+          <span class="tp-sell">&#x25B2; SELL $${(t.sell_price||0).toFixed(4)}</span>
+        </div>
+      </div>
+      <div class="trip-meta">
+        <span>${t.amount} ${base}</span>
+        <span>&middot;</span>
+        <span>${t.timestamp.split(' ')[0]}</span>
+        <span>${t.timestamp.split(' ')[1]}</span>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GRID CONTEXT POPUP
+// ══════════════════════════════════════════════════════════════════════════════
+
+function openGridPopup(pair, focusPrice, focusSide, focusLabel, event) {
+  event && event.stopPropagation();
+  const popup = document.getElementById('grid-popup');
+
+  // ── Build price ladder ───────────────────────────────────────────────────
+  // Collect all known prices for this pair from open orders + recent fills
+  const spacing = _spacingPct / 100;
+  const fp      = parseFloat(focusPrice);
+
+  // Active orders for this pair
+  const pairOrders = _activeOrders.filter(o => o.pair === pair);
+  // Recent fills for this pair
+  const pairFills  = _recentFills.filter(f => f.pair === pair);
+
+  // Generate 5 levels above + 5 below focus price using configured spacing
+  const allLevels = [];
+  for (let i = -5; i <= 5; i++) {
+    if (i === 0) continue;
+    allLevels.push(parseFloat((fp * (1 + i * spacing)).toFixed(6)));
+  }
+  // Also include all actual open order prices (may differ from calculated)
+  pairOrders.forEach(o => { if (!allLevels.some(l => Math.abs(l - o.price) < fp * 0.001)) allLevels.push(o.price); });
+  allLevels.sort((a,b) => b - a);  // descending
+
+  // Map for quick lookup
+  const orderMap  = {};
+  pairOrders.forEach(o => { orderMap[o.price.toFixed(4)] = o; });
+  const fillPrices = new Set(pairFills.map(f => parseFloat(f.price).toFixed(4)));
+
+  // ── Render rows ──────────────────────────────────────────────────────────
+  let html = '';
+  let belowFocus = false;
+  allLevels.forEach(lvl => {
+    const lvlKey  = lvl.toFixed(4);
+    const isFocus = Math.abs(lvl - fp) < fp * 0.0005;
+    const order   = orderMap[lvlKey];
+    const isFill  = fillPrices.has(lvlKey);
+    const isAbove = lvl > fp;
+
+    if (!belowFocus && lvl < fp) {
+      // Insert divider at current price
+      html += `<div class="gp-divider"></div>
+        <div class="gp-row" style="opacity:.6;font-size:10px;color:var(--muted)">
+          <span class="gp-price">$${fp.toFixed(4)}</span>
+          <div class="gp-dot gp-dot-slot"></div>
+          <span class="gp-lbl slot">${focusLabel}</span>
+        </div>
+        <div class="gp-divider"></div>`;
+      belowFocus = true;
+    }
+
+    let dotCls, lblCls, lblText;
+    if (isFocus) {
+      dotCls  = 'gp-dot-filled';
+      lblCls  = 'focused';
+      lblText = '← ' + focusSide.toUpperCase() + ' (this)';
+    } else if (isFill && !order) {
+      dotCls  = 'gp-dot-filled';
+      lblCls  = 'filled';
+      lblText = (isAbove ? 'SELL' : 'BUY') + ' — filled';
+    } else if (order) {
+      dotCls  = order.side === 'buy' ? 'gp-dot-buy' : 'gp-dot-sell';
+      lblCls  = order.side;
+      lblText = order.side.toUpperCase() + ' — open';
+    } else {
+      dotCls  = 'gp-dot-slot';
+      lblCls  = 'slot';
+      lblText = (isAbove ? 'SELL' : 'BUY') + ' slot';
+    }
+
+    html += `<div class="gp-row ${isFocus ? 'gp-focused' : ''} ${(isFill && !isFocus) ? 'gp-filled' : ''}">
+      <span class="gp-price">$${lvl.toFixed(4)}</span>
+      <div class="gp-dot ${dotCls}"></div>
+      <span class="gp-lbl ${lblCls}">${lblText}</span>
+    </div>`;
+  });
+  if (!belowFocus) {
+    html += `<div class="gp-divider"></div>
+      <div class="gp-row" style="opacity:.6;font-size:10px;color:var(--muted)">
+        <span class="gp-price">$${fp.toFixed(4)}</span>
+        <div class="gp-dot gp-dot-slot"></div>
+        <span class="gp-lbl slot">${focusLabel}</span>
+      </div>`;
+  }
+
+  document.getElementById('gp-title').textContent = pair + ' — Grid Context';
+  document.getElementById('gp-ladder').innerHTML = html;
+
+  // ── Position popup near the click ────────────────────────────────────────
+  popup.classList.add('open');
+  if (event) {
+    const x = Math.min(event.clientX + 12, window.innerWidth  - 330);
+    const y = Math.min(event.clientY - 20,  window.innerHeight - 420);
+    popup.style.left = Math.max(8, x) + 'px';
+    popup.style.top  = Math.max(8, y) + 'px';
+  } else {
+    popup.style.left = '50%';
+    popup.style.top  = '50%';
+    popup.style.transform = 'translate(-50%,-50%)';
+  }
+}
+
+function closeGridPopup() {
+  document.getElementById('grid-popup').classList.remove('open');
+}
+
+// Clicking outside the popup closes it (but not if clicking the popup itself)
+document.addEventListener('click', e => {
+  const popup = document.getElementById('grid-popup');
+  if (popup.classList.contains('open') && !popup.contains(e.target)) closeGridPopup();
+});
 
 // ── Cancel queue state (track pending cancellations locally) ───────────
 const pendingCancels = new Set();
@@ -985,6 +1364,11 @@ async function fetchTrades() {
 
     document.getElementById('generated-at').textContent = 'Last updated: ' + d.generated_at;
 
+    // Store fresh data for grid popup (used when user clicks an order/fill)
+    _spacingPct   = d.grid_spacing_pct ?? 1.0;
+    _activeOrders = d.active_orders || [];
+    _recentFills  = d.recent || [];
+
     // Stat cards
     const s = d.summary;
 
@@ -1068,7 +1452,9 @@ async function fetchTrades() {
         return n.toFixed(6);
       }
 
-      activeTbody.innerHTML = activeOrders.map(o => `<tr>
+      activeTbody.innerHTML = activeOrders.map(o => `<tr style="cursor:pointer" title="Click to see grid context"
+          onclick="openGridPopup('${o.pair}',${o.price},'${o.side}','open order',event)"
+          onmouseenter="this.style.background='rgba(59,130,246,.06)'" onmouseleave="this.style.background=''">
         <td><strong>${o.pair}</strong></td>
         <td class="${o.side==='buy'?'buy':'sell'}">${o.side.toUpperCase()}</td>
         <td>$${parseFloat(o.price).toFixed(4)}</td>
@@ -1194,10 +1580,13 @@ async function fetchTrades() {
       }
 
       const rowClass = isUntracked ? 'untracked-sell' : '';
-      ftbody.innerHTML += `<tr class="${rowClass}">
+      const fillSide = f.side === 'BUY' ? 'buy' : 'sell';
+      ftbody.innerHTML += `<tr class="${rowClass}" style="cursor:pointer" title="Click to see grid context"
+          onclick="openGridPopup('${f.pair}',${f.price},'${fillSide}','filled ${f.timestamp?.split(' ')[1]||''}',event)"
+          onmouseenter="this.style.background='rgba(59,130,246,.06)'" onmouseleave="this.style.background=''">
         <td style="color:#8892a0;font-size:12px">${f.timestamp}</td>
         <td><strong>${f.pair}</strong></td>
-        <td class="${f.side === 'BUY' ? 'buy' : 'sell'}">${f.side}</td>
+        <td class="${fillSide}">${f.side}</td>
         <td>$${f.price?.toFixed ? f.price.toFixed(4) : f.price}</td>
         <td>${f.amount ?? '—'}</td>
         <td>${val}</td>
@@ -1334,6 +1723,9 @@ class _Handler(BaseHTTPRequestHandler):
 
         elif self.path == "/api/trades":
             self._send_json(200, _get_trade_stats())
+
+        elif self.path == "/api/round_trips":
+            self._send_json(200, _get_round_trips())
 
         else:
             self._send_json(404, {"error": "not found"})
