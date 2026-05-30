@@ -496,7 +496,8 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
   #grid-panel{
     position:fixed;top:0;right:0;height:100vh;
     width:min(440px,100vw);
-    background:#13172a;border-left:1px solid var(--border);
+    background:#1a1e30;border-left:2px solid rgba(59,130,246,.3);
+    box-shadow:-8px 0 40px rgba(0,0,0,.6);
     transform:translateX(100%);
     transition:transform .28s cubic-bezier(.4,0,.2,1);
     overflow-y:auto;z-index:700;display:flex;flex-direction:column;
@@ -1293,11 +1294,12 @@ function showGridDemo() {
     { side: 'sell', price: 83.00 },
     { side: 'buy',  price: 81.00 }, { side: 'buy',  price: 80.19 }, { side: 'buy', price: 79.39 },
   ];
+  // Buys happen BEFORE sells — bot buys at the dip, price rises, sell fills later
   const demoFills = [
-    { side: 'BUY',  price: 84.00, timestamp: '2026-05-30 10:40:36', pnl: null,   amount: 0.119 },
-    { side: 'BUY',  price: 83.17, timestamp: '2026-05-30 10:39:21', pnl: null,   amount: 0.727 },
-    { side: 'SELL', price: 83.50, timestamp: '2026-05-30 10:38:31', pnl: 0.1012, amount: 0.119 },
-    { side: 'SELL', price: 83.25, timestamp: '2026-05-30 10:37:12', pnl: 0.5955, amount: 0.727 },
+    { side: 'BUY',  price: 82.44, timestamp: '2026-05-30 10:37:12', pnl: null,   amount: 0.727 },
+    { side: 'BUY',  price: 82.67, timestamp: '2026-05-30 10:38:21', pnl: null,   amount: 0.119 },
+    { side: 'SELL', price: 83.26, timestamp: '2026-05-30 11:37:42', pnl: 0.5993, amount: 0.727 },
+    { side: 'SELL', price: 83.50, timestamp: '2026-05-30 11:38:31', pnl: 0.1012, amount: 0.119 },
   ];
   _renderGridPanel('SOL/USDT', demoOrders, demoFills, 83.00, 'sell', true);
   document.getElementById('grid-panel').classList.add('open');
