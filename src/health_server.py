@@ -492,6 +492,7 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     display:none;position:fixed;z-index:600;
     background:#13172a;border:1px solid var(--border);border-radius:14px;
     padding:16px;width:340px;max-width:calc(100vw - 24px);
+    max-height:90vh;overflow-y:auto;
     box-shadow:0 16px 56px rgba(0,0,0,.8);
   }
   #grid-popup.open{display:block;}
@@ -1088,7 +1089,7 @@ function _renderGridPopup(title, allOrders, pairFills, focusPrice, focusSide, is
   // Render SELL orders (above market)
   let ordersHtml = '';
   sells.forEach(o => {
-    const isFocus = Math.abs(parseFloat(o.price) - fp) < fp * 0.001;
+    const isFocus = parseFloat(o.price).toFixed(4) === fp.toFixed(4);
     ordersHtml += _gpOrderRow(o.price, 'sell', isFocus);
   });
 
@@ -1103,7 +1104,7 @@ function _renderGridPopup(title, allOrders, pairFills, focusPrice, focusSide, is
 
   // BUY orders (below market)
   buys.forEach(o => {
-    const isFocus = Math.abs(parseFloat(o.price) - fp) < fp * 0.001;
+    const isFocus = parseFloat(o.price).toFixed(4) === fp.toFixed(4);
     ordersHtml += _gpOrderRow(o.price, 'buy', isFocus);
   });
 
@@ -1116,7 +1117,7 @@ function _renderGridPopup(title, allOrders, pairFills, focusPrice, focusSide, is
   document.getElementById('gp-orders').innerHTML = ordersHtml || '<div class="gp-empty">No open orders for this pair</div>';
 
   // Fills section
-  const fills = pairFills.slice(0, 6);
+  const fills = pairFills.slice(0, 4);
   const fillsHdr = document.getElementById('gp-fills-hdr');
   const fillsEl  = document.getElementById('gp-fills');
   if (fills.length > 0) {
