@@ -295,3 +295,4 @@ python3 -m src.resume --confirm
 | 2026-05-30 | Popup shows wrong colors (all blue) | Fixed: uses actual orders not calculated levels; toFixed(4) exact match |
 | 2026-05-30 | Sell fills showing as BUY color | Fixed: 3-way classification: BUY fill / SELL tracked / SELL untracked |
 | 2026-05-31 | Strategy gap: BULL/HIGH_VOL/LOW_VOL = 0 strategies | Documented. Phases 7–9 planned to close all gaps. |
+| 2026-05-31 | SMA200 issue: SOL 21% and LINK 14% below SMA200 | Grid unaffected (BEAR_TREND grid approved). Phase 8 Trailing DCA needs classifier fix: add recovery-bull detection within 15% of SMA200. Documented in TECHNICAL_SPEC.md Phase 8. |

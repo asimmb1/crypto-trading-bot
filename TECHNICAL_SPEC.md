@@ -343,6 +343,43 @@ HIGH_VOL_STOP_LOSS_PCT=15.0   # 15% stop-loss
 
 **Problem it solves:** BULL_TREND sits out entirely. The most profitable crypto market phase (100–400% typical gains) generates zero income for the current bot. Standard DCA sells too early (at 1.5% take-profit) — misses the full trend.
 
+**⚠️ Known classifier issue to fix before Phase 8 activates:**
+
+Live testing (May 2026) revealed that SOL sits 21% below its SMA200 ($82 vs $104) and LINK sits 14% below ($9.19 vs $10.69). The current classifier requires `close > SMA200` to label a move as BULL_TREND. This means:
+
+- A 17% SOL rally (May: $83 → $97) was still classified BEAR_TREND (because $97 < SMA200 $115)
+- Trailing DCA would never activate for these pairs even during a genuine rally
+- Pairs recovering from a long bear cycle can never reach BULL_TREND until they cross SMA200 — which may take months
+
+**Required fix in `market_classifier.py` before Phase 8:**
+
+Add a `BULL_TREND_RECOVERY` intermediate state (or modify BULL_TREND logic):
+
+```python
+# Current (too strict for recovering pairs):
+if adx >= ADX_TREND_THRESHOLD:
+    if close > sma200 and plus_di > minus_di:
+        return BULL_TREND   # ← requires full SMA200 recovery
+    else:
+        return BEAR_TREND
+
+# Improved — add recovery bull detection:
+if adx >= ADX_TREND_THRESHOLD:
+    sma50 = compute_sma(close, 50).iloc[-1]
+    if plus_di > minus_di:
+        if close > sma200:
+            return BULL_TREND           # classic bull — above long-term average
+        elif close > sma50 and (close / sma200) > 0.85:
+            return BULL_TREND           # recovery bull — within 15% of SMA200, trending up
+        # else: still BEAR_TREND (more than 15% below SMA200 even while trending up)
+    else:
+        return BEAR_TREND
+```
+
+This fix means: pairs that are recovering but still 15%+ below SMA200 stay as BEAR_TREND (grid runs). Pairs within 15% of SMA200 and trending up correctly trigger Trailing DCA. Backtest this change against the 15-month dataset before deploying.
+
+**For the grid strategy (Phase 6, going live now):** this issue does NOT affect anything. Grid is approved and profitable in both RANGING and BEAR_TREND. The SMA200 fix is only needed when building Phase 8.
+
 **Design:**
 
 ```python
