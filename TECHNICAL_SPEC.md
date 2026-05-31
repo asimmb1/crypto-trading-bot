@@ -6,6 +6,144 @@
 
 ---
 
+## Development Workflow — READ FIRST
+
+> **This section is for Claude and the developer at the start of every session.**  
+> Before touching any code, check the branch, check what's deployed, and follow the rules below.
+
+### Branch Structure
+
+```
+main     ← PRODUCTION. Railway auto-deploys from this on every push.
+             Only stable, tested code lives here.
+             Current live URL: https://crypto-trading-bot-production-512b.up.railway.app
+             
+  └── develop  ← ALL NEW STRATEGY DEVELOPMENT happens here.
+                  Wide Grid (Phase 7), Trailing DCA (Phase 8), Breakout (Phase 9),
+                  new dashboard sections, backtests, tests/.
+                  Never push directly to main from develop without a reviewed merge.
+```
+
+### How to Start Every Session
+
+```bash
+# 1. Check which branch you're on
+git branch
+
+# 2. If doing live bot work (bug fix, dashboard tweak, hotfix):
+git checkout main
+git pull origin main          # get latest
+
+# 3. If doing strategy development (new bots, backtests, tests):
+git checkout develop
+git pull origin develop       # get latest
+git merge main                # sync any live fixes into develop first
+```
+
+### Decision Tree — What Branch to Use
+
+```
+Is this a bug in the LIVE bot that needs fixing NOW?
+  YES → checkout main → fix → commit → push → Railway auto-deploys
+        then: checkout develop → git merge main (sync the fix)
+  
+Is this new code for Phase 7/8/9 (new strategies, backtests, tests)?
+  YES → checkout develop → develop → commit → push origin develop
+        DO NOT push to main until strategy is tested and ready
+
+Is this a docs update (Architecture.md, TECHNICAL_SPEC.md)?
+  YES → either branch is fine, but prefer main for clarity
+        (docs describe both current state and future plans)
+
+Is this a dashboard UX change?
+  If it fixes a live bug → main
+  If it adds new panels for Phase 7/8/9 → develop
+```
+
+### Hotfix Workflow (Live Bug)
+
+```bash
+git checkout main
+git pull origin main
+# ... make the fix ...
+git add <files>
+git commit -m "Fix: <description>"
+git push origin main          # Railway deploys immediately
+
+# Sync the fix into develop so you don't lose it
+git checkout develop
+git merge main
+git push origin develop
+```
+
+### New Strategy Development Workflow
+
+```bash
+git checkout develop
+git pull origin develop
+git merge main                # always sync from main before starting
+
+# ... build wide_grid_bot.py, tests, backtest, dashboard ...
+
+git add src/wide_grid_bot.py backtests/backtest_wide_grid.py ...
+git commit -m "Phase 7: Wide-spacing grid for HIGH_VOL regime"
+git push origin develop       # DOES NOT touch Railway/main
+```
+
+### Merging develop → main (When Strategy is Ready)
+
+A strategy is ready to merge to main when:
+1. ✅ `backtest_wide_grid.py` approves it (≥60% win rate, ≥3 occurrences)
+2. ✅ Unit tests pass (`pytest tests/`)
+3. ✅ 48h testnet dry run with no errors
+4. ✅ Dashboard correctly shows new strategy state
+5. ✅ Restart recovery tested (kill and restart mid-strategy)
+6. ✅ CB and DMS verified to halt new strategy correctly
+
+```bash
+# On GitHub: open PR from develop → main
+# Review the diff — focus on files that both branches touch:
+#   src/health_server.py     (both add UI — resolve carefully)
+#   src/adaptive_bot.py      (develop adds new strategy cases)
+#   src/strategy_selector.py (develop adds new strategy types)
+# After review and approval: merge PR → Railway auto-deploys new strategy
+```
+
+### Files That Will Have Merge Conflicts (Plan Ahead)
+
+| File | Why Conflict | Resolution |
+|------|-------------|-----------|
+| `src/health_server.py` | main gets dashboard hotfixes; develop adds Phase 7/8/9 panels | Take all from develop for new sections; take hotfixes from main |
+| `src/adaptive_bot.py` | main may get CB/DMS fixes; develop adds new strategy worker cases | Keep both sets of changes |
+| `src/strategy_selector.py` | develop adds wide_grid/trailing_dca/breakout strategy types | Take develop version entirely (main shouldn't touch this) |
+| `main.py` | develop adds new --wide-grid / --trailing-dca run modes | Take develop version, verify existing modes still work |
+
+**New files in develop (no conflicts — they don't exist in main):**
+- `src/wide_grid_bot.py`
+- `src/trailing_dca_bot.py`
+- `src/breakout_bot.py`
+- `backtests/backtest_wide_grid.py`
+- `backtests/backtest_trailing_dca.py`
+- `backtests/backtest_breakout.py`
+- `tests/` (entire directory)
+
+### Weekly Sync Rule
+
+Every time you start a development session on `develop`, merge `main` in first:
+```bash
+git checkout develop && git merge main
+```
+This keeps the gap small. If you let it drift for weeks, the merge gets painful.
+
+### Railway Deployment Notes
+
+- Railway watches `main` branch only. Pushing to `develop` does nothing on Railway.
+- After merging to `main`, Railway builds and deploys automatically (~2 min).
+- To verify the new code is live: `curl https://crypto-trading-bot-production-512b.up.railway.app/health`
+- To run one-off commands on Railway: `railway run --service crypto-trading-bot <command>`
+
+---
+
 ## Overview
 
 Adaptive multi-pair trading bot operating across all crypto market regimes. Detects regime every 4 hours, selects the historically proven strategy for each pair, and runs independent worker threads. Three layered safety systems. Full HTTP interface with live dashboard, emergency controls, and trade visualisation.
