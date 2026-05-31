@@ -566,10 +566,25 @@ class GridBot:
             return
 
         # ── Reconcile path ───────────────────────────────────────────────────
-        logger.warning(
-            f"[{self.pair}] Found {len(existing)} open orders on exchange. "
-            f"Reconciling — skipping fresh grid placement."
-        )
+        max_expected = self.num_levels * 2   # buys + counter-sells = 2× grid levels
+        if len(existing) > max_expected:
+            logger.warning(
+                f"[{self.pair}] Found {len(existing)} open orders on exchange — "
+                f"more than expected maximum of {max_expected} (2×{self.num_levels} levels). "
+                f"This is normal after a long run or many restarts. "
+                f"Use 'python3 main.py --clean' to cancel all exchange orders for a fresh start."
+            )
+            notify(
+                f"⚠️ **High Order Count** `{self.pair}`\n"
+                f"{len(existing)} orders on exchange (expected ≤{max_expected}).\n"
+                f"Bot is reconciling and managing all of them.\n"
+                f"Run `python3 main.py --clean` if you want a clean slate."
+            )
+        else:
+            logger.warning(
+                f"[{self.pair}] Found {len(existing)} open orders on exchange. "
+                f"Reconciling — skipping fresh grid placement."
+            )
 
         for order in existing:
             self.open_orders[order["id"]] = {

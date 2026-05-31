@@ -8,6 +8,9 @@ Modes:
   python main.py --dca         → Single DCA bot (ETH/USDT from .env)
   python main.py --backtest    → Run full regime backtest and update matrix
   python main.py --status      → Print system status and exit
+  python main.py --clean       → Cancel ALL open orders on exchange for all pairs.
+                                 Use for development resets or when orders accumulate
+                                 beyond expected levels. Requires confirmation.
 
 Setup commands (run separately, not modes):
   python -m src.confirm        → Reset dead man's switch (run daily)
@@ -52,6 +55,63 @@ def run_backtest():
     print("\n[2/2] Running regime backtest...")
     subprocess.run([sys.executable, "-m", "backtests.backtest_regime"], check=True)
     print("\n✅ Backtest complete. Run `python main.py` to start adaptive trading.\n")
+
+
+def clean_exchange():
+    """
+    Cancel ALL open orders on the exchange for every configured pair.
+    Requires typing CLEAN to confirm — this is a destructive operation.
+    Use when orders have accumulated unexpectedly (e.g. after many dev restarts).
+    """
+    import os
+    from src.exchange import get_exchange
+    from src.adaptive_bot import ALL_PAIRS
+
+    env = Config.ENV.upper()
+    print(f"\n{'═'*55}")
+    print(f"  CLEAN EXCHANGE  [{env}]")
+    print(f"{'═'*55}")
+    print(f"  This will cancel ALL open orders for:")
+    for pair in ALL_PAIRS:
+        print(f"    • {pair}")
+    print(f"\n  ⚠️  This CANNOT be undone. USDT locked in buy orders")
+    print(f"  will be returned. Any tokens in sell orders will remain")
+    print(f"  in your account uncovered until you restart the bot.")
+    print(f"\n  Type CLEAN (capitals) to confirm, or anything else to abort:")
+    confirm = input("  → ").strip()
+
+    if confirm != "CLEAN":
+        print("\n  Aborted. No orders were cancelled.\n")
+        return
+
+    print("\n  Connecting to exchange...")
+    try:
+        ex = get_exchange("binance")
+    except Exception as e:
+        print(f"  ❌ Could not connect: {e}\n")
+        return
+
+    total_cancelled = 0
+    for pair in ALL_PAIRS:
+        try:
+            orders = ex.fetch_open_orders(pair)
+            if not orders:
+                print(f"  {pair:<15} 0 orders — nothing to cancel")
+                continue
+            cancelled = 0
+            for o in orders:
+                try:
+                    ex.cancel_order(o["id"], pair)
+                    cancelled += 1
+                except Exception as e:
+                    print(f"    ⚠️  Could not cancel {o['id']}: {e}")
+            total_cancelled += cancelled
+            print(f"  {pair:<15} cancelled {cancelled} of {len(orders)} orders ✅")
+        except Exception as e:
+            print(f"  {pair:<15} ❌ error: {e}")
+
+    print(f"\n  Total cancelled: {total_cancelled} orders")
+    print(f"  Restart the bot to place fresh grids.\n")
 
 
 def print_status():
@@ -111,6 +171,7 @@ def main():
     parser.add_argument("--dca",       action="store_true", help="Run DCA bot only")
     parser.add_argument("--backtest",  action="store_true", help="Run regime backtest")
     parser.add_argument("--status",    action="store_true", help="Print system status")
+    parser.add_argument("--clean",     action="store_true", help="Cancel ALL open orders on exchange (dev reset tool)")
     args = parser.parse_args()
 
     if args.status:
@@ -119,6 +180,10 @@ def main():
 
     if args.backtest:
         run_backtest()
+        return
+
+    if args.clean:
+        clean_exchange()
         return
 
     # Validate config before starting any bot
