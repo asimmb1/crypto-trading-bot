@@ -46,11 +46,16 @@ CB_CHECK_INTERVAL      = 30         # seconds
 DMS_CHECK_INTERVAL     = 10 * 60    # 10 minutes
 
 # ── All pairs to monitor ───────────────────────────────────────────────────────
-ALL_PAIRS = [
-    "BTC/USDT", "ETH/USDT", "SOL/USDT",
-    "BNB/USDT", "XRP/USDT", "AVAX/USDT",
-    "DOGE/USDT", "LINK/USDT", "ADA/USDT",
-]
+# ACTIVE_PAIRS env var lets you restrict pairs without code changes.
+# Default: all 9 pairs. Live start: ACTIVE_PAIRS=SOL/USDT,LINK/USDT
+_env_pairs = os.environ.get("ACTIVE_PAIRS", "").strip()
+ALL_PAIRS = (
+    [p.strip() for p in _env_pairs.split(",") if p.strip()]
+    if _env_pairs else
+    ["BTC/USDT", "ETH/USDT", "SOL/USDT",
+     "BNB/USDT", "XRP/USDT", "AVAX/USDT",
+     "DOGE/USDT", "LINK/USDT", "ADA/USDT"]
+)
 
 # Capital per bot (from .env)
 GRID_CAPITAL_PER_BOT = Config.GRID_TOTAL_CAPITAL or 100.0
