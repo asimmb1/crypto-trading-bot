@@ -370,15 +370,28 @@ class GridBot:
             logger.warning(f"[{self.pair}] Balance check for uncovered sells failed: {e}")
             return
 
-        # Ignore dust — anything below 10% of one order's worth at current price
+        # Ignore dust — two checks:
+        #   1. Qty dust: less than 10% of one standard order qty → skip
+        #   2. Notional dust: qty × price < $6 → skip (Binance minimum is $5; $6 adds buffer)
+        #      Catches cases like 0.006 BNB × $711 = $4.27 which passes qty check but
+        #      fails Binance's NOTIONAL filter with code -1013.
         try:
             current_price = self.get_price()
         except Exception:
             return
-        dust_threshold = (self.order_size / current_price) * 0.10
+        dust_threshold  = (self.order_size / current_price) * 0.10
+        notional_value  = free * current_price
+        MIN_NOTIONAL    = 6.0   # $6 buffer above Binance's $5 minimum notional
 
         if free <= dust_threshold:
-            return  # nothing uncovered (or just exchange dust)
+            return  # qty dust
+
+        if notional_value < MIN_NOTIONAL:
+            logger.info(
+                f"[{self.pair}] {free:.6f} {base_asset} (${notional_value:.2f}) "
+                f"is below minimum notional ${MIN_NOTIONAL} — treating as dust, skipping recovery sell."
+            )
+            return  # notional dust — would fail exchange filter
 
         logger.warning(
             f"[{self.pair}] {free:.6f} {base_asset} is FREE (no open sell covering it). "
