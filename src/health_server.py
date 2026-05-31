@@ -862,28 +862,30 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
   </table>
 </div>
 
-<!-- ── Orphaned / unmanaged orders ───────────────────────────────────── -->
+<!-- ── Previous session orders ────────────────────────────────────────── -->
 <div id="orphaned-section">
   <div class="orphaned-card">
     <div class="orphaned-title">
-      <span>&#x26A0;&#xFE0F; Unmanaged Open Orders &mdash; Action Required</span>
+      <span>&#x1F504; Orders from Previous Session &mdash; Bot is Managing These</span>
       <div class="btn-wrap">
-        <button class="btn-cancel-all" id="cancel-all-btn" onclick="cancelAllOrphans()">Cancel All</button>
+        <button class="btn-cancel-all" id="cancel-all-btn" onclick="cancelAllOrphans()">Fresh Start</button>
         <div class="btn-tip" style="border-color:rgba(249,115,22,.4);">
-          <strong>Clear All Unmanaged Orders</strong><br>
-          BUY orders are cancelled — USDT is returned by the exchange.<br>
-          SELL orders are cancelled and tokens are <strong>immediately market-sold to USDT</strong> so nothing is left unattended.<br><br>
-          <div class="tip-step">Processed within 30 seconds on the bot's next cycle.</div>
-          <div class="tip-step">Bot removes orders from memory first — no fake fills logged.</div>
-          <div class="tip-step">Market sells fire at current bid price (slight slippage possible).</div>
+          <strong>Fresh Start — Close All Previous Session Orders</strong><br>
+          Only do this if you want the bot to rebuild its grid from scratch at current prices.<br>
+          The bot is already managing these orders and will continue normally without this action.<br><br>
+          <div class="tip-step">BUY orders cancelled — USDT returned by exchange immediately.</div>
+          <div class="tip-step">SELL orders cancelled and tokens market-sold to USDT (no crypto left unattended).</div>
+          <div class="tip-step">Bot places a new fresh grid on next startup after cancellation.</div>
+          <div class="tip-step" style="color:var(--red)">&#x26A0; This interrupts currently running grid cycles.</div>
         </div>
       </div>
     </div>
     <p class="orphaned-desc">
-      These orders existed on the exchange before the last bot restart — P&amp;L is not tracked for them.
-      They also appear in <strong>Active Open Orders</strong> above (same orders, two views).
-      <strong>BUY:</strong> Cancel safely — USDT returned by exchange.
-      <strong>SELL:</strong> Cancelling will immediately market-sell the tokens to USDT so nothing is left unattended.
+      These orders are from the <strong>previous bot session</strong>.
+      The bot <strong>is actively managing them</strong> — fills are detected every 30 seconds, counter-orders will be placed automatically.
+      The only difference from normal orders: P&amp;L is partially estimated (entry price inferred, not recorded from an actual buy fill in this session).<br><br>
+      <strong>No action needed.</strong> Only use &ldquo;Fresh Start&rdquo; if you specifically want the bot to rebuild its grid at current market prices.
+      <strong>SELL orders:</strong> clicking &ldquo;Market Sell&rdquo; converts tokens to USDT immediately.
     </p>
     <table>
       <thead><tr><th>Pair</th><th>Side</th><th>Price</th><th>Amount</th><th>Age</th><th>Action</th></tr></thead>
@@ -1770,7 +1772,7 @@ async function fetchTrades() {
     if (orphaned.length > 0) {
       orphanedSection.style.display = 'block';
       cancelAllBtn.disabled = false;
-      cancelAllBtn.textContent = `Cancel All (${orphaned.length})`;
+      cancelAllBtn.textContent = `Fresh Start (${orphaned.length} orders)`;
       // Build all rows in one pass, then set innerHTML once (O(n) not O(n²))
       const rowsHtml = orphaned.map(o => {
         const isPending = pendingCancels.has(o.id);
